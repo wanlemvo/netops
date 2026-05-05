@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netops-cli"
+version = "0.1.0"
+description = "Local-first relationship tracking CLI and TUI"
+readme = "specs/001-netops-cli-app/quickstart.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "prompt_toolkit>=3.0",
+    "rich>=13.0",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+netops = "netops.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
