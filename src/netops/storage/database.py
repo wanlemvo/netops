@@ -9,6 +9,11 @@ def default_database_path() -> Path:
     override = os.environ.get("NETOPS_DB")
     if override:
         return Path(override)
+
+    app_home = os.environ.get("NETOPS_HOME")
+    if app_home:
+        return Path(app_home) / "data" / "netops.sqlite3"
+
     home = Path.home()
     return home / ".netops" / "netops.sqlite3"
 
@@ -21,4 +26,3 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
-

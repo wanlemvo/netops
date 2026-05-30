@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*.exe
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -8,8 +9,11 @@ __pycache__/
 htmlcov/
 .venv/
 venv/
+data/
 dist/
 build/
+portable/
+.tmp/
 *.egg-info/
 .env
 .env.*
@@ -19,4 +23,3 @@ build/
 Thumbs.db
 .vscode/
 .idea/
-

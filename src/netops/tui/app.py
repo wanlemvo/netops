@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import shutil
 import sys
 
 from prompt_toolkit import Application
@@ -100,7 +101,14 @@ class NetOpsTui:
         @bindings.add("<any>")
         def any_key(event) -> None:
             data = event.key_sequence[0].data
-            if self.state.current.name == ScreenName.ADD_PERSON_FORM and data and data.isprintable():
+            if self.state.current.name in {
+                ScreenName.ADD_PERSON_FORM,
+                ScreenName.LOG_INTERACTION_FORM,
+                ScreenName.EDIT_FIELD_FORM,
+                ScreenName.RAW_NOTE_FORM,
+                ScreenName.CONTACT_FORM,
+                ScreenName.OPEN_LOOP_FORM,
+            } and data and data.isprintable():
                 self.state.enter_text(data)
                 event.app.invalidate()
 
@@ -108,31 +116,48 @@ class NetOpsTui:
 
     def render_formatted_text(self) -> FormattedText:
         screen = self.state.current
-        fragments: list[tuple[str, str]] = [
-            ("class:title", f"{HEADER}\n"),
-            ("class:border", "=" * 72 + "\n"),
-            ("class:subtitle", f"{screen.title}\n\n"),
-        ]
+        fragments: list[tuple[str, str]] = []
+        if screen.name == ScreenName.MAIN_MENU:
+            fragments.append(("class:logo", f"{HEADER}\n"))
+        fragments.extend(
+            [
+                ("class:title", "NETOPS // RELATIONSHIP OPS TERMINAL\n"),
+                ("class:border", "=" * 72 + "\n"),
+                ("class:subtitle", f"{screen.title}\n\n"),
+            ]
+        )
 
-        for line in screen.body:
-            style = "class:error" if line.startswith("!") else "class:field"
-            fragments.append((style, f"{line}\n"))
+        row_height = self.visible_item_height(screen)
+        rows = visible_rows(screen, height=row_height)
+        clipped = has_clipped_rows(screen, height=row_height)
+        if len(screen.items) <= row_height:
+            indexed_rows = list(enumerate(rows))
+        else:
+            screen.clamp_selection()
+            start = max(0, min(screen.selected_index, len(screen.items) - row_height))
+            indexed_rows = list(enumerate(rows, start=start))
+
+        def append_items() -> None:
+            for absolute_index, item in indexed_rows:
+                is_text_row = item.kind == "noop"
+                marker = " " if is_text_row else (">" if absolute_index == screen.selected_index else " ")
+                style = "class:field" if is_text_row else ("class:selected" if absolute_index == screen.selected_index else "")
+                if not item.enabled:
+                    style = "class:disabled"
+                hint = f"  // {item.hint}" if item.hint else ""
+                fragments.append((style, f"{marker} {item.label}{hint}\n"))
+            if clipped:
+                fragments.append(("class:hint", "... more items hidden; keep moving to scroll ...\n"))
+
+        def append_body() -> None:
+            for line in screen.body:
+                style = "class:error" if line.startswith("!") else "class:field"
+                fragments.append((style, f"{line}\n"))
+
+        append_body()
         if screen.body and screen.items:
             fragments.append(("", "\n"))
-
-        rows = visible_rows(screen, height=12)
-        clipped = has_clipped_rows(screen, height=12)
-        for item in rows:
-            absolute_index = screen.items.index(item)
-            marker = ">" if absolute_index == screen.selected_index else " "
-            style = "class:selected" if absolute_index == screen.selected_index else ""
-            if not item.enabled:
-                style = "class:disabled"
-            hint = f"  // {item.hint}" if item.hint else ""
-            fragments.append((style, f"{marker} {item.label}{hint}\n"))
-
-        if clipped:
-            fragments.append(("class:hint", "... more items hidden; keep moving to scroll ...\n"))
+        append_items()
 
         fragments.extend(
             [
@@ -143,6 +168,13 @@ class NetOpsTui:
             ]
         )
         return FormattedText(fragments)
+
+    def visible_item_height(self, screen) -> int:
+        if screen.name != ScreenName.DOSSIER:
+            return 12
+        terminal = shutil.get_terminal_size(fallback=(80, 24))
+        reserved_rows = 8
+        return max(8, terminal.lines - reserved_rows)
 
     def run(self) -> None:
         self.application.run()

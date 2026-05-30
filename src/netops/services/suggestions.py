@@ -21,7 +21,11 @@ class SuggestionService:
         suggestions = generate_suggestions(self.repository, person_id=person_id)
         if not include_low_priority:
             suggestions = [suggestion for suggestion in suggestions if suggestion.priority_score >= 30]
-        return suggestions[:limit]
+        saved = [self.save_action(suggestion) for suggestion in suggestions[:limit]]
+        return [suggestion for suggestion in saved if suggestion.status == SuggestionStatus.NEW]
+
+    def for_dossier(self, person_query: str, *, limit: int = 5) -> list[SuggestedAction]:
+        return self.generate(person_query=person_query, limit=limit, include_low_priority=True)
 
     def save_action(self, suggestion: SuggestedAction) -> SuggestedAction:
         return self.repository.add_suggestion(suggestion)
@@ -32,3 +36,5 @@ class SuggestionService:
         suggestion.acted_at = now_iso()
         return self.repository.update_suggestion(suggestion)
 
+    def delete(self, suggestion_id: str) -> None:
+        self.repository.delete_suggestion(suggestion_id)

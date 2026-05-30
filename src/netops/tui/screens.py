@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from netops.domain.models import DashboardSummary, Dossier, OpenLoop
+from netops.domain.models import DashboardSummary, Dossier, OpenLoop, SuggestedAction
+from netops.tui.dossier import dossier_items
 from netops.tui.state import ItemKind, ScreenName, ScreenState, SelectableItem
 
 
@@ -14,6 +15,7 @@ def main_menu_screen() -> ScreenState:
             SelectableItem("Overview", ItemKind.OPEN_SCREEN, target=ScreenName.OVERVIEW.value, hint="relationship ops dashboard"),
             SelectableItem("People", ItemKind.OPEN_SCREEN, target=ScreenName.PEOPLE_LIST.value, hint="browse dossiers and add people"),
             SelectableItem("Open Loops", ItemKind.OPEN_SCREEN, target=ScreenName.OPEN_LOOPS.value, hint="follow-ups and unresolved threads"),
+            SelectableItem("Suggestions", ItemKind.OPEN_SCREEN, target=ScreenName.SUGGESTIONS.value, hint="rule-based next actions"),
             SelectableItem("Exit", ItemKind.OPEN_SCREEN, target=ScreenName.EXIT_CONFIRM.value, hint="close NetOps"),
         ],
         status="Select a module. No commands required.",
@@ -38,6 +40,9 @@ def people_list_screen(rows: list[dict[str, str]]) -> ScreenState:
     if not rows:
         items.append(SelectableItem("no people", ItemKind.NOOP, enabled=False, hint="empty list"))
     for row in rows:
+        if row.get("kind") == "header":
+            items.append(SelectableItem(row["name"], ItemKind.NOOP, enabled=False, hint="group"))
+            continue
         label = row["name"]
         context = " | ".join(part for part in [row.get("organization", ""), row.get("tags", "")] if part)
         if context:
@@ -51,7 +56,7 @@ def people_list_screen(rows: list[dict[str, str]]) -> ScreenState:
             )
         )
     items.append(SelectableItem("+ Add Person", ItemKind.OPEN_FORM, hint="create a local person record"))
-    selected_index = 0 if rows else 1
+    selected_index = next((index for index, item in enumerate(items) if item.enabled), 0)
     return ScreenState(
         name=ScreenName.PEOPLE_LIST,
         title="People List",
@@ -63,33 +68,36 @@ def people_list_screen(rows: list[dict[str, str]]) -> ScreenState:
 
 def dossier_screen(dossier: Dossier) -> ScreenState:
     person = dossier.person
-    body = [
-        f"Name: {person.display_name}",
-        f"Organization: {person.organization or 'None'}",
-        f"Tags: {', '.join(person.tags) or 'None'}",
-        f"Relationship notes: {person.relationship_notes or 'None'}",
-        "",
-        f"Open loops: {len(dossier.open_loops)}",
-        f"Recent interactions: {len(dossier.recent_interactions)}",
-        f"Suggestions: {len(dossier.suggestions)}",
-        f"Evaluations: {len(dossier.evaluations)}",
-    ]
     return ScreenState(
         name=ScreenName.DOSSIER,
         title=f"Dossier // {person.display_name}",
-        body=body,
-        items=[SelectableItem("Back", ItemKind.CANCEL, hint="return to People List")],
+        items=dossier_items(dossier),
         payload={"person_id": person.id},
-        status="Escape returns to People List.",
+        status="UP/DOWN scrolls the full dossier. Enter runs actions under [Actions].",
     )
 
 
 def add_person_form_screen(draft) -> ScreenState:
     fields = [
-        ("name", "Name", draft.name),
+        ("name", "Name*", draft.name),
+        ("alias", "Alias", draft.alias),
+        ("role", "Role", draft.role),
         ("organization", "Organization", draft.organization),
+        ("location", "Location", draft.location),
+        ("birthday", "Birthday", draft.birthday),
         ("tags", "Tags", draft.tags),
-        ("notes", "Notes", draft.notes),
+        ("email", "Email", draft.email),
+        ("phone", "Phone", draft.phone),
+        ("linkedin", "LinkedIn", draft.linkedin),
+        ("github", "GitHub", draft.github),
+        ("other_social", "Other Social", draft.other_social),
+        ("relationship_type", "Relationship Type", draft.relationship_type),
+        ("relationship_strength", "Relationship Strength", draft.relationship_strength),
+        ("notes", "Relationship Notes", draft.notes),
+        ("interests", "Interests", draft.interests),
+        ("communication_style", "Communication Style", draft.communication_style),
+        ("preferences_notes", "Preferences", draft.preferences_notes),
+        ("signals", "Signals", draft.signals),
     ]
     body = []
     for field_name, label, value in fields:
@@ -110,6 +118,139 @@ def add_person_form_screen(draft) -> ScreenState:
     )
 
 
+def contact_form_screen(draft) -> ScreenState:
+    fields = [
+        ("kind", "Kind", draft.kind),
+        ("label", "Label", draft.label),
+        ("value", "Value", draft.value),
+    ]
+    body = []
+    for field_name, label, value in fields:
+        marker = ">" if draft.active_field == field_name else " "
+        body.append(f"{marker} {label}: {value}")
+    if draft.validation_message:
+        body.extend(["", f"! {draft.validation_message}"])
+    return ScreenState(
+        name=ScreenName.CONTACT_FORM,
+        title="Add Contact",
+        body=body,
+        items=[
+            SelectableItem("Save", ItemKind.SAVE_FORM, hint="add contact method"),
+            SelectableItem("Cancel", ItemKind.CANCEL, hint="return to dossier"),
+        ],
+        payload={"person_id": draft.person_id},
+        status="Examples: kind=email/phone/social, label=work/LinkedIn/mobile.",
+    )
+
+
+def open_loop_form_screen(draft) -> ScreenState:
+    fields = [
+        ("description", "Follow-Up", draft.description),
+        ("due_on", "Due Date", draft.due_on),
+        ("priority", "Priority", draft.priority),
+    ]
+    body = []
+    for field_name, label, value in fields:
+        marker = ">" if draft.active_field == field_name else " "
+        body.append(f"{marker} {label}: {value}")
+    if draft.validation_message:
+        body.extend(["", f"! {draft.validation_message}"])
+    return ScreenState(
+        name=ScreenName.OPEN_LOOP_FORM,
+        title="Add Follow-Up / Open Loop",
+        body=body,
+        items=[
+            SelectableItem("Save", ItemKind.SAVE_FORM, hint="create follow-up"),
+            SelectableItem("Cancel", ItemKind.CANCEL, hint="return to dossier"),
+        ],
+        payload={"person_id": draft.person_id},
+        status="Due date is optional. Use YYYY-MM-DD when present.",
+    )
+
+
+def log_interaction_form_screen(draft) -> ScreenState:
+    fields = [
+        ("occurred_on", "Date", draft.occurred_on),
+        ("interaction_type", "Type", draft.interaction_type),
+        ("notes", "Notes", draft.notes),
+        ("follow_up", "Follow-up", draft.follow_up),
+        ("due_on", "Follow-up Due Date", draft.due_on),
+    ]
+    body = []
+    for field_name, label, value in fields:
+        marker = ">" if draft.active_field == field_name else " "
+        body.append(f"{marker} {label}: {value}")
+    if draft.validation_message:
+        body.append("")
+        body.append(f"! {draft.validation_message}")
+    return ScreenState(
+        name=ScreenName.LOG_INTERACTION_FORM,
+        title="Log Interaction",
+        body=body,
+        items=[
+            SelectableItem("Save", ItemKind.SAVE_FORM, hint="log interaction"),
+            SelectableItem("Cancel", ItemKind.CANCEL, hint="return to dossier"),
+        ],
+        payload={"person_id": draft.person_id},
+        status="Type to edit active field. Tab changes field. Enter activates Save/Cancel.",
+    )
+
+
+def edit_profile_list_screen(person_id: str, fields) -> ScreenState:
+    items = [
+        SelectableItem(
+            field.label,
+            ItemKind.OPEN_FORM,
+            target="edit_field",
+            hint=f"{field.section}: {field.current_value or 'unset'}",
+            payload={"person_id": person_id, "field_key": field.key, "current_value": field.current_value},
+        )
+        for field in fields
+    ]
+    items.append(SelectableItem("Back", ItemKind.CANCEL, hint="return to dossier"))
+    return ScreenState(
+        name=ScreenName.EDIT_PROFILE_LIST,
+        title="Edit Profile",
+        items=items,
+        payload={"person_id": person_id},
+        status="Select one field to edit. Escape returns to dossier.",
+    )
+
+
+def edit_field_form_screen(draft) -> ScreenState:
+    body = [f"Field: {draft.label}", f"> Value: {draft.value}"]
+    if draft.validation_message:
+        body.extend(["", f"! {draft.validation_message}"])
+    return ScreenState(
+        name=ScreenName.EDIT_FIELD_FORM,
+        title="Edit Field",
+        body=body,
+        items=[
+            SelectableItem("Save", ItemKind.SAVE_FORM, hint="update field"),
+            SelectableItem("Cancel", ItemKind.CANCEL, hint="return to fields"),
+        ],
+        payload={"person_id": draft.person_id, "field_key": draft.field_key},
+        status="Type to edit value. Empty input clears optional fields.",
+    )
+
+
+def raw_note_form_screen(draft) -> ScreenState:
+    body = [f"> Note: {draft.note}"]
+    if draft.validation_message:
+        body.extend(["", f"! {draft.validation_message}"])
+    return ScreenState(
+        name=ScreenName.RAW_NOTE_FORM,
+        title="Append Raw Note",
+        body=body,
+        items=[
+            SelectableItem("Save", ItemKind.SAVE_FORM, hint="append note"),
+            SelectableItem("Cancel", ItemKind.CANCEL, hint="return to dossier"),
+        ],
+        payload={"person_id": draft.person_id},
+        status="Saving appends a new raw note and preserves previous notes.",
+    )
+
+
 def overview_screen(summary: DashboardSummary) -> ScreenState:
     body = [
         f"People: {summary.total_people}",
@@ -118,6 +259,10 @@ def overview_screen(summary: DashboardSummary) -> ScreenState:
         f"Overdue follow-ups: {summary.overdue_followups}",
         f"Due soon: {summary.due_soon_followups}",
     ]
+    if summary.top_suggestions:
+        body.append("")
+        body.append("[Top Follow-Ups]")
+        body.extend(f"- {suggestion.action_text}" for suggestion in summary.top_suggestions[:3])
     return ScreenState(
         name=ScreenName.OVERVIEW,
         title="Overview",
@@ -133,12 +278,133 @@ def open_loops_screen(loops: Sequence[OpenLoop]) -> ScreenState:
         items.append(SelectableItem("no open loops", ItemKind.NOOP, enabled=False))
     for loop in loops:
         due = f" due {loop.due_on}" if loop.due_on else ""
-        items.append(SelectableItem(f"{loop.description} [{loop.status.value}{due}]", ItemKind.NOOP, enabled=False))
+        items.append(
+            SelectableItem(
+                f"{loop.description} [{loop.status.value}{due}]",
+                ItemKind.ACTION,
+                target="open_loop_detail",
+                payload={"loop_id": loop.id},
+            )
+        )
+    items.append(SelectableItem("Back", ItemKind.CANCEL, hint="return to Main Menu"))
     return ScreenState(
         name=ScreenName.OPEN_LOOPS,
         title="Open Loops",
         items=items,
-        status="Open-loop editing stays in direct commands for now. Escape returns to Main Menu.",
+        status="Select a loop to complete or defer it. Escape returns to Main Menu.",
+    )
+
+
+def loop_detail_screen(loop: OpenLoop) -> ScreenState:
+    body = [
+        f"Follow-Up: {loop.description}",
+        f"Status: {loop.status.value}",
+        f"Due: {loop.due_on or 'unset'}",
+        f"Priority: {loop.priority or 'unset'}",
+        f"Resolution: {loop.resolution_notes or 'unset'}",
+    ]
+    return ScreenState(
+        name=ScreenName.LOOP_DETAIL,
+        title="Open Loop",
+        body=body,
+        items=[
+            SelectableItem("Mark Completed", ItemKind.ACTION, target="complete_loop", payload={"loop_id": loop.id}),
+            SelectableItem("Defer", ItemKind.ACTION, target="defer_loop", payload={"loop_id": loop.id}),
+            SelectableItem(
+                "Delete Open Loop",
+                ItemKind.ACTION,
+                target="confirm_delete_open_loop",
+                payload={
+                    "kind": "open loop",
+                    "label": loop.description,
+                    "description": "Delete this open loop permanently?",
+                    "confirm_target": "delete_open_loop",
+                    "loop_id": loop.id,
+                },
+            ),
+            SelectableItem("Back", ItemKind.CANCEL, hint="return to Open Loops"),
+        ],
+        payload={"loop_id": loop.id},
+        status="Choose an action for this follow-up.",
+    )
+
+
+def suggestions_screen(suggestions: Sequence[SuggestedAction]) -> ScreenState:
+    items: list[SelectableItem] = []
+    if not suggestions:
+        items.append(SelectableItem("no suggestions right now", ItemKind.NOOP, enabled=False))
+    for suggestion in suggestions:
+        items.append(
+            SelectableItem(
+                f"{suggestion.action_text} [{suggestion.priority_score}]",
+                ItemKind.ACTION,
+                target="open_suggestion_detail",
+                hint=suggestion.reason,
+                payload={"suggestion_id": suggestion.id},
+            )
+        )
+    items.append(SelectableItem("Back", ItemKind.CANCEL, hint="return to Main Menu"))
+    return ScreenState(
+        name=ScreenName.SUGGESTIONS,
+        title="Suggestions",
+        items=items,
+        status="Select a suggestion to complete or dismiss it.",
+    )
+
+
+def suggestion_detail_screen(suggestion: SuggestedAction) -> ScreenState:
+    body = [
+        f"Action: {suggestion.action_text}",
+        f"Reason: {suggestion.reason}",
+        f"Priority: {suggestion.priority_score}",
+        f"Status: {suggestion.status.value}",
+    ]
+    return ScreenState(
+        name=ScreenName.SUGGESTION_DETAIL,
+        title="Suggestion",
+        body=body,
+        items=[
+            SelectableItem("Mark Completed", ItemKind.ACTION, target="complete_suggestion", payload={"suggestion_id": suggestion.id}),
+            SelectableItem("Dismiss", ItemKind.ACTION, target="ignore_suggestion", payload={"suggestion_id": suggestion.id}),
+            SelectableItem(
+                "Delete Suggestion",
+                ItemKind.ACTION,
+                target="confirm_delete_suggestion",
+                payload={
+                    "kind": "suggestion",
+                    "label": suggestion.action_text,
+                    "description": "Delete this suggestion permanently?",
+                    "confirm_target": "delete_suggestion",
+                    "suggestion_id": suggestion.id,
+                },
+            ),
+            SelectableItem("Back", ItemKind.CANCEL, hint="return to Suggestions"),
+        ],
+        payload={"suggestion_id": suggestion.id},
+        status="Suggestions are generated from open loops and contact history.",
+    )
+
+
+def delete_confirm_screen(payload: dict) -> ScreenState:
+    label = payload.get("label", payload.get("kind", "item"))
+    description = payload.get("description", "Delete this item permanently?")
+    confirm_target = payload["confirm_target"]
+    confirm_payload = dict(payload)
+    return ScreenState(
+        name=ScreenName.DELETE_CONFIRM,
+        title=f"Delete {payload.get('kind', 'Item')}?",
+        body=[
+            description,
+            "",
+            str(label),
+            "",
+            "This cannot be undone.",
+        ],
+        items=[
+            SelectableItem("No, keep it", ItemKind.ACTION, target="delete_cancel"),
+            SelectableItem("Yes, delete permanently", ItemKind.ACTION, target=confirm_target, payload=confirm_payload),
+        ],
+        status="Choose carefully. Escape cancels.",
     )
 
 

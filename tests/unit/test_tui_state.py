@@ -65,7 +65,7 @@ def fake_tui_services():
 
 def test_main_menu_options():
     screen = main_menu_screen()
-    assert [item.label for item in screen.items] == ["Overview", "People", "Open Loops", "Exit"]
+    assert [item.label for item in screen.items] == ["Overview", "People", "Open Loops", "Suggestions", "Exit"]
 
 
 def test_selection_movement_and_bounds(fake_tui_services):
@@ -124,4 +124,3 @@ def test_visible_rows_indicate_clipping():
     )
     assert len(visible_rows(screen, height=5)) == 5
     assert has_clipped_rows(screen, height=5) is True
-

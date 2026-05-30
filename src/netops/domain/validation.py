@@ -43,3 +43,22 @@ def require_choice(value: str, choices: Iterable[str], label: str) -> str:
         raise UserInputError(f"{label} must be one of: {', '.join(choices)}.")
     return normalized
 
+
+def normalize_text_list(value) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def normalize_relationship_strength(value: str | int | None) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    if not normalized:
+        return None
+    allowed = {"1", "2", "3", "4", "5", "low", "medium", "high"}
+    if normalized not in allowed:
+        raise UserInputError("Relationship strength must be 1-5, low, medium, or high.")
+    return normalized

@@ -36,7 +36,9 @@ def test_people_list_person_opens_dossier(fake_tui_services):
 def test_dossier_screen_renders_person_context():
     screen = dossier_screen(Dossier(person=Person(display_name="Avery Chen")))
     assert screen.name == ScreenName.DOSSIER
-    assert any("Avery Chen" in line for line in screen.body)
+    assert any("Avery Chen" in item.label for item in screen.items)
+    assert screen.items[0].label == "[Identity]"
+    assert any(item.label == "[Actions]" for item in screen.items)
 
 
 def test_add_person_form_preserves_validation_message():
@@ -53,4 +55,3 @@ def test_overview_screen_content_and_escape_return(fake_tui_services):
     state.push(screen)
     state.escape()
     assert state.current.name == ScreenName.MAIN_MENU
-
