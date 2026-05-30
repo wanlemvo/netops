@@ -1,23 +1,85 @@
 # Project Overview
 
-NetOps CLI is a local-first relationship operations system. It is designed to help a user remember people, preserve interaction context, track follow-ups, and generate simple next-action suggestions without relying on a cloud service.
+## What Is NetOps?
 
-The project started as a relationship tracking CLI and expanded into structured person dossiers. A dossier combines profile data, contact methods, relationship notes, personal intelligence, interaction history, open loops, suggestions, evaluations, and raw notes.
+NetOps is a relationship intelligence system designed to preserve human context over time.
 
-## What Exists Today
+Most people manage relationships through a combination of memory, notes, messages, calendars, social media, contact apps, and chance encounters. As personal and professional networks grow, important context becomes fragmented and increasingly difficult to maintain.
 
-- Python package under `src/netops`
-- Typer/Rich CLI commands
-- SQLite persistence
-- Pydantic domain models
-- Repository/service layers
-- Prompt-toolkit terminal UI code
-- Portable Windows executable build script
-- Tests across unit, integration, and contract layers
+NetOps was created to address this problem.
 
-## Product Direction
+Rather than treating people as static contact records, NetOps treats relationships as evolving systems composed of interactions, commitments, opportunities, preferences, history, and context.
 
-The project is being oriented around the executable CLI app as the primary product surface. The goal is a clean portable tool that can be run from a folder, use a local SQLite database, and avoid cloud dependencies.
+The goal is to create a structured operational view of a user's network, making it easier to maintain meaningful relationships and reduce information loss over time.
 
-The TUI code still exists, but the repo structure and docs now emphasize the CLI/executable app first.
+---
 
+## The Core Problem
+
+Modern tools are optimized for communication, not relationship continuity.
+
+Contact applications store names and phone numbers.
+
+Messaging platforms store conversations.
+
+Calendars store events.
+
+Notes applications store observations.
+
+The user is often responsible for mentally connecting all of these systems together.
+
+As networks grow, this becomes increasingly difficult.
+
+Important details are forgotten.
+
+Follow-ups are missed.
+
+Opportunities disappear.
+
+Relationships become reactive instead of intentional.
+
+---
+
+## The NetOps Philosophy
+
+Relationships generate information.
+
+That information has value.
+
+The challenge is not collecting information.
+
+The challenge is preserving, organizing, and acting upon it.
+
+NetOps exists to reduce friction between relationship information and relationship action.
+
+The long-term vision is to transform fragmented relationship data into structured relationship intelligence.
+
+---
+
+## Current Scope
+
+The current version focuses on:
+
+* Relationship dossiers
+* Contact management
+* Interaction tracking
+* Follow-up management
+* Open-loop tracking
+* Relationship history
+
+The system is implemented as a local-first CLI application backed by SQLite.
+
+---
+
+## Future Direction
+
+Future versions may explore:
+
+* AI-assisted relationship intelligence
+* Context synthesis
+* Memory compression
+* Message parsing
+* Opportunity detection
+* Proactive relationship recommendations
+
+The long-term goal is to help users maintain stronger, more intentional relationships through better context preservation and retrieval.
