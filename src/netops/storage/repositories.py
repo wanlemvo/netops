@@ -7,22 +7,32 @@ from typing import Iterable
 
 from netops.domain.models import (
     DashboardSummary,
+    ContactMethod,
     Dossier,
     Evaluation,
     EvaluationOutcome,
     Interaction,
+    InteractionPerson,
     OpenLoop,
     OpenLoopStatus,
+    Opportunity,
+    OpportunityPerson,
     Person,
     PersonContact,
     RawNoteEntry,
     Relationship,
+    RelationshipLink,
+    Signal,
     SuggestedAction,
     SuggestionStatus,
+    Tag,
+    Tagging,
     TimelineEntry,
+    V1Interaction,
+    V1Person,
     now_iso,
 )
-from netops.domain.validation import NotFoundError
+from netops.domain.validation import NotFoundError, require_entity_type
 from netops.storage.migrations import migrate
 
 
@@ -95,6 +105,78 @@ class NetOpsRepository:
     def contact_from_row(self, row: sqlite3.Row) -> PersonContact:
         return PersonContact(**dict(row))
 
+    def v1_person_from_row(self, row: sqlite3.Row) -> V1Person:
+        data = dict(row)
+        return V1Person(
+            person_id=data.get("person_id") or data["id"],
+            name=data.get("name") or data["display_name"],
+            alias=data.get("alias"),
+            role=data.get("role"),
+            organization=data.get("organization"),
+            location=data.get("location"),
+            birthday=data.get("birthday"),
+            profile_photo_path=data.get("profile_photo_path"),
+            relationship_type=data.get("relationship_type"),
+            relationship_status=data.get("relationship_status"),
+            relationship_strength=data.get("relationship_strength"),
+            origin_story=data.get("origin_story"),
+            importance_reason=data.get("importance_reason"),
+            dossier=data.get("dossier"),
+            interests=data.get("interests"),
+            communication_style=data.get("communication_style"),
+            preferences=data.get("preferences") or data.get("preferences_notes"),
+            current_goals=data.get("current_goals"),
+            potential_value=data.get("potential_value"),
+            first_met=data.get("first_met"),
+            last_contact=data.get("last_contact"),
+            next_action=data.get("next_action"),
+            follow_up_date=data.get("follow_up_date"),
+            created_at=data["created_at"],
+            updated_at=data["updated_at"],
+            archived_at=data.get("archived_at"),
+        )
+
+    def contact_method_from_row(self, row: sqlite3.Row) -> ContactMethod:
+        return ContactMethod(**dict(row))
+
+    def v1_interaction_from_row(self, row: sqlite3.Row) -> V1Interaction:
+        data = dict(row)
+        return V1Interaction(
+            interaction_id=data.get("interaction_id") or data["id"],
+            interaction_date=data.get("interaction_date") or data["occurred_on"],
+            interaction_type=data.get("interaction_type"),
+            summary=data.get("summary") or data.get("notes"),
+            takeaways=data.get("takeaways"),
+            action_items=data.get("action_items"),
+            sentiment=data.get("sentiment"),
+            follow_up_required=data.get("follow_up_required", 0),
+            follow_up_date=data.get("follow_up_date"),
+            created_at=data["created_at"],
+            updated_at=data["updated_at"],
+            archived_at=data.get("archived_at"),
+        )
+
+    def interaction_person_from_row(self, row: sqlite3.Row) -> InteractionPerson:
+        return InteractionPerson(**dict(row))
+
+    def signal_from_row(self, row: sqlite3.Row) -> Signal:
+        return Signal(**dict(row))
+
+    def opportunity_from_row(self, row: sqlite3.Row) -> Opportunity:
+        return Opportunity(**dict(row))
+
+    def opportunity_person_from_row(self, row: sqlite3.Row) -> OpportunityPerson:
+        return OpportunityPerson(**dict(row))
+
+    def relationship_link_from_row(self, row: sqlite3.Row) -> RelationshipLink:
+        return RelationshipLink(**dict(row))
+
+    def tag_from_row(self, row: sqlite3.Row) -> Tag:
+        return Tag(**dict(row))
+
+    def tagging_from_row(self, row: sqlite3.Row) -> Tagging:
+        return Tagging(**dict(row))
+
     def add_person(self, person: Person) -> Person:
         with self.connection:
             self.connection.execute(
@@ -130,7 +212,465 @@ class NetOpsRepository:
                     person.updated_at,
                 ),
             )
+            self.connection.execute(
+                "UPDATE people SET person_id = COALESCE(person_id, id), name = COALESCE(name, display_name) WHERE id = ?",
+                (person.id,),
+            )
+            if person.primary_email:
+                self.connection.execute(
+                    """
+                    INSERT OR IGNORE INTO contact_methods (
+                        contact_method_id, person_id, type, label, value, normalized_value,
+                        is_primary, created_at, updated_at
+                    ) VALUES (?, ?, 'email', 'primary', ?, ?, 1, ?, ?)
+                    """,
+                    (
+                        f"{person.id}-email",
+                        person.id,
+                        person.primary_email,
+                        person.primary_email.strip().lower(),
+                        person.created_at,
+                        person.updated_at,
+                    ),
+                )
+            if person.primary_phone:
+                self.connection.execute(
+                    """
+                    INSERT OR IGNORE INTO contact_methods (
+                        contact_method_id, person_id, type, label, value, normalized_value,
+                        is_primary, created_at, updated_at
+                    ) VALUES (?, ?, 'phone', 'primary', ?, ?, 1, ?, ?)
+                    """,
+                    (
+                        f"{person.id}-phone",
+                        person.id,
+                        person.primary_phone,
+                        person.primary_phone.strip(),
+                        person.created_at,
+                        person.updated_at,
+                    ),
+                )
         return person
+
+    def add_v1_person(self, person: V1Person) -> V1Person:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO people (
+                    id, person_id, display_name, name, alias, role, organization, location, birthday,
+                    profile_photo_path, relationship_type, relationship_status, relationship_strength,
+                    origin_story, importance_reason, dossier, interests, communication_style, preferences,
+                    current_goals, potential_value, first_met, last_contact, next_action, follow_up_date,
+                    tags, created_at, updated_at, archived_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    person.person_id,
+                    person.person_id,
+                    person.name,
+                    person.name,
+                    person.alias,
+                    person.role,
+                    person.organization,
+                    person.location,
+                    person.birthday,
+                    person.profile_photo_path,
+                    person.relationship_type,
+                    person.relationship_status,
+                    person.relationship_strength,
+                    person.origin_story,
+                    person.importance_reason,
+                    person.dossier,
+                    person.interests or "",
+                    person.communication_style,
+                    person.preferences,
+                    person.current_goals,
+                    person.potential_value,
+                    person.first_met,
+                    person.last_contact,
+                    person.next_action,
+                    person.follow_up_date,
+                    "[]",
+                    person.created_at,
+                    person.updated_at,
+                    person.archived_at,
+                ),
+            )
+        return person
+
+    def update_v1_person(self, person: V1Person) -> V1Person:
+        person.updated_at = now_iso()
+        with self.connection:
+            self.connection.execute(
+                """
+                UPDATE people
+                SET display_name = ?, name = ?, alias = ?, role = ?, organization = ?, location = ?,
+                    birthday = ?, profile_photo_path = ?, relationship_type = ?, relationship_status = ?,
+                    relationship_strength = ?, origin_story = ?, importance_reason = ?, dossier = ?,
+                    interests = ?, communication_style = ?, preferences = ?, current_goals = ?,
+                    potential_value = ?, first_met = ?, last_contact = ?, next_action = ?,
+                    follow_up_date = ?, updated_at = ?, archived_at = ?
+                WHERE person_id = ? OR id = ?
+                """,
+                (
+                    person.name,
+                    person.name,
+                    person.alias,
+                    person.role,
+                    person.organization,
+                    person.location,
+                    person.birthday,
+                    person.profile_photo_path,
+                    person.relationship_type,
+                    person.relationship_status,
+                    person.relationship_strength,
+                    person.origin_story,
+                    person.importance_reason,
+                    person.dossier,
+                    person.interests or "",
+                    person.communication_style,
+                    person.preferences,
+                    person.current_goals,
+                    person.potential_value,
+                    person.first_met,
+                    person.last_contact,
+                    person.next_action,
+                    person.follow_up_date,
+                    person.updated_at,
+                    person.archived_at,
+                    person.person_id,
+                    person.person_id,
+                ),
+            )
+        return person
+
+    def get_v1_person(self, person_id: str) -> V1Person:
+        row = self.connection.execute(
+            "SELECT * FROM people WHERE person_id = ? OR id = ?",
+            (person_id, person_id),
+        ).fetchone()
+        if row is None:
+            raise NotFoundError(f"No person found for '{person_id}'.")
+        return self.v1_person_from_row(row)
+
+    def list_v1_people(self) -> list[V1Person]:
+        rows = self.connection.execute(
+            "SELECT * FROM people WHERE archived_at IS NULL ORDER BY lower(COALESCE(name, display_name))"
+        ).fetchall()
+        return [self.v1_person_from_row(row) for row in rows]
+
+    def add_contact_method(self, contact: ContactMethod) -> ContactMethod:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO contact_methods (
+                    contact_method_id, person_id, type, label, value, normalized_value,
+                    is_primary, created_at, updated_at, archived_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    contact.contact_method_id,
+                    contact.person_id,
+                    contact.type,
+                    contact.label,
+                    contact.value,
+                    contact.normalized_value or contact.value.strip().lower(),
+                    contact.is_primary,
+                    contact.created_at,
+                    contact.updated_at,
+                    contact.archived_at,
+                ),
+            )
+        return contact
+
+    def list_contact_methods(self, person_id: str) -> list[ContactMethod]:
+        rows = self.connection.execute(
+            "SELECT * FROM contact_methods WHERE person_id = ? AND archived_at IS NULL ORDER BY type, is_primary DESC, created_at",
+            (person_id,),
+        ).fetchall()
+        return [self.contact_method_from_row(row) for row in rows]
+
+    def get_contact_method(self, contact_method_id: str) -> ContactMethod:
+        row = self.connection.execute(
+            "SELECT * FROM contact_methods WHERE contact_method_id = ?",
+            (contact_method_id,),
+        ).fetchone()
+        if row is None:
+            raise NotFoundError(f"No contact method found for '{contact_method_id}'.")
+        return self.contact_method_from_row(row)
+
+    def delete_contact_method(self, contact_method_id: str) -> None:
+        contact = self.get_contact_method(contact_method_id)
+        archived_at = now_iso()
+        with self.connection:
+            self.connection.execute(
+                "UPDATE contact_methods SET archived_at = ?, updated_at = ? WHERE contact_method_id = ?",
+                (archived_at, archived_at, contact_method_id),
+            )
+            self.connection.execute("DELETE FROM person_contacts WHERE id = ?", (contact.contact_method_id,))
+
+    def set_primary_contact_method(self, contact_method_id: str) -> ContactMethod:
+        contact = self.get_contact_method(contact_method_id)
+        updated_at = now_iso()
+        with self.connection:
+            self.connection.execute(
+                "UPDATE contact_methods SET is_primary = 0, updated_at = ? WHERE person_id = ? AND type = ?",
+                (updated_at, contact.person_id, contact.type),
+            )
+            self.connection.execute(
+                "UPDATE contact_methods SET is_primary = 1, updated_at = ? WHERE contact_method_id = ?",
+                (updated_at, contact_method_id),
+            )
+        return self.get_contact_method(contact_method_id)
+
+    def add_v1_interaction(self, interaction: V1Interaction, people: list[InteractionPerson] | None = None) -> V1Interaction:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO interactions (
+                    id, interaction_id, person_id, occurred_on, interaction_date, interaction_type, notes,
+                    summary, takeaways, action_items, sentiment, follow_up_required, follow_up_date,
+                    created_at, updated_at, archived_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    interaction.interaction_id,
+                    interaction.interaction_id,
+                    people[0].person_id if people else "",
+                    interaction.interaction_date,
+                    interaction.interaction_date,
+                    interaction.interaction_type or "meeting",
+                    interaction.summary or "",
+                    interaction.summary,
+                    interaction.takeaways,
+                    interaction.action_items,
+                    interaction.sentiment,
+                    interaction.follow_up_required,
+                    interaction.follow_up_date,
+                    interaction.created_at,
+                    interaction.updated_at,
+                    interaction.archived_at,
+                ),
+            )
+            for participant in people or []:
+                self.connection.execute(
+                    """
+                    INSERT OR IGNORE INTO interaction_people (
+                        interaction_person_id, interaction_id, person_id, role, is_primary, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        participant.interaction_person_id,
+                        interaction.interaction_id,
+                        participant.person_id,
+                        participant.role,
+                        participant.is_primary,
+                        participant.created_at,
+                    ),
+                )
+        return interaction
+
+    def list_v1_interactions_for_person(self, person_id: str) -> list[V1Interaction]:
+        rows = self.connection.execute(
+            """
+            SELECT i.* FROM interactions i
+            JOIN interaction_people ip ON ip.interaction_id = COALESCE(i.interaction_id, i.id)
+            WHERE ip.person_id = ? AND i.archived_at IS NULL
+            ORDER BY COALESCE(i.interaction_date, i.occurred_on) DESC, i.created_at DESC
+            """,
+            (person_id,),
+        ).fetchall()
+        return [self.v1_interaction_from_row(row) for row in rows]
+
+    def add_signal(self, signal: Signal) -> Signal:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO signals (
+                    signal_id, person_id, signal_text, confidence, source_interaction_id,
+                    source_description, created_at, updated_at, archived_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    signal.signal_id,
+                    signal.person_id,
+                    signal.signal_text,
+                    signal.confidence,
+                    signal.source_interaction_id,
+                    signal.source_description,
+                    signal.created_at,
+                    signal.updated_at,
+                    signal.archived_at,
+                ),
+            )
+        return signal
+
+    def list_signals(self, person_id: str) -> list[Signal]:
+        rows = self.connection.execute(
+            "SELECT * FROM signals WHERE person_id = ? AND archived_at IS NULL ORDER BY created_at DESC",
+            (person_id,),
+        ).fetchall()
+        return [self.signal_from_row(row) for row in rows]
+
+    def add_opportunity(self, opportunity: Opportunity, people: list[OpportunityPerson] | None = None) -> Opportunity:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO opportunities (
+                    opportunity_id, title, status, description, follow_up_date,
+                    created_at, updated_at, closed_at, archived_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    opportunity.opportunity_id,
+                    opportunity.title,
+                    opportunity.status,
+                    opportunity.description,
+                    opportunity.follow_up_date,
+                    opportunity.created_at,
+                    opportunity.updated_at,
+                    opportunity.closed_at,
+                    opportunity.archived_at,
+                ),
+            )
+            for participant in people or []:
+                self.connection.execute(
+                    """
+                    INSERT OR IGNORE INTO opportunity_people (
+                        opportunity_person_id, opportunity_id, person_id, role, is_primary, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        participant.opportunity_person_id,
+                        opportunity.opportunity_id,
+                        participant.person_id,
+                        participant.role,
+                        participant.is_primary,
+                        participant.created_at,
+                    ),
+                )
+        return opportunity
+
+    def list_opportunities_for_person(self, person_id: str) -> list[Opportunity]:
+        rows = self.connection.execute(
+            """
+            SELECT o.* FROM opportunities o
+            JOIN opportunity_people op ON op.opportunity_id = o.opportunity_id
+            WHERE op.person_id = ? AND o.archived_at IS NULL
+            ORDER BY CASE WHEN o.follow_up_date IS NULL THEN 1 ELSE 0 END, o.follow_up_date, o.created_at DESC
+            """,
+            (person_id,),
+        ).fetchall()
+        return [self.opportunity_from_row(row) for row in rows]
+
+    def add_relationship_link(self, link: RelationshipLink) -> RelationshipLink:
+        require_entity_type(link.source_entity_type)
+        require_entity_type(link.target_entity_type)
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO relationship_links (
+                    relationship_link_id, source_entity_type, source_entity_id, target_entity_type,
+                    target_entity_id, relationship_type, description, created_at, updated_at, archived_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    link.relationship_link_id,
+                    link.source_entity_type,
+                    link.source_entity_id,
+                    link.target_entity_type,
+                    link.target_entity_id,
+                    link.relationship_type,
+                    link.description,
+                    link.created_at,
+                    link.updated_at,
+                    link.archived_at,
+                ),
+            )
+        return link
+
+    def list_relationship_links_for_entity(self, entity_type: str, entity_id: str) -> list[RelationshipLink]:
+        entity_type = require_entity_type(entity_type)
+        rows = self.connection.execute(
+            """
+            SELECT * FROM relationship_links
+            WHERE archived_at IS NULL
+              AND ((source_entity_type = ? AND source_entity_id = ?)
+                OR (target_entity_type = ? AND target_entity_id = ?))
+            ORDER BY created_at DESC
+            """,
+            (entity_type, entity_id, entity_type, entity_id),
+        ).fetchall()
+        return [self.relationship_link_from_row(row) for row in rows]
+
+    def add_tag(self, tag: Tag) -> Tag:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT OR IGNORE INTO tags (tag_id, name, normalized_name, created_at, updated_at, archived_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (tag.tag_id, tag.name, tag.normalized_name, tag.created_at, tag.updated_at, tag.archived_at),
+            )
+        row = self.connection.execute("SELECT * FROM tags WHERE normalized_name = ?", (tag.normalized_name,)).fetchone()
+        return self.tag_from_row(row)
+
+    def add_tagging(self, tagging: Tagging) -> Tagging:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT OR IGNORE INTO taggings (tagging_id, tag_id, entity_type, entity_id, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (tagging.tagging_id, tagging.tag_id, tagging.entity_type, tagging.entity_id, tagging.created_at),
+            )
+        return tagging
+
+    def list_v1_follow_ups(self) -> list[dict[str, str]]:
+        person_rows = self.connection.execute(
+            """
+            SELECT person_id, name, next_action, follow_up_date
+            FROM people
+            WHERE archived_at IS NULL
+              AND (trim(COALESCE(next_action, '')) != '' OR trim(COALESCE(follow_up_date, '')) != '')
+            """
+        ).fetchall()
+        opportunity_rows = self.connection.execute(
+            """
+            SELECT o.opportunity_id, o.title, o.status, o.follow_up_date, p.name
+            FROM opportunities o
+            LEFT JOIN opportunity_people op ON op.opportunity_id = o.opportunity_id AND op.is_primary = 1
+            LEFT JOIN people p ON p.id = op.person_id
+            WHERE o.archived_at IS NULL
+              AND lower(o.status) NOT IN ('closed', 'complete', 'completed', 'archived')
+              AND trim(COALESCE(o.follow_up_date, '')) != ''
+            """
+        ).fetchall()
+        rows: list[dict[str, str]] = [
+            {
+                "kind": "person",
+                "id": row["person_id"],
+                "title": row["name"] or row["person_id"],
+                "action": row["next_action"] or "",
+                "follow_up_date": row["follow_up_date"] or "",
+                "status": "pending",
+                "person": row["name"] or "",
+            }
+            for row in person_rows
+        ]
+        rows.extend(
+            {
+                "kind": "opportunity",
+                "id": row["opportunity_id"],
+                "title": row["title"],
+                "action": row["title"],
+                "follow_up_date": row["follow_up_date"] or "",
+                "status": row["status"],
+                "person": row["name"] or "",
+            }
+            for row in opportunity_rows
+        )
+        return sorted(rows, key=lambda row: (row["follow_up_date"] == "", row["follow_up_date"], row["kind"], row["title"].lower()))
 
     def update_person(self, person: Person) -> Person:
         person.updated_at = now_iso()
@@ -216,6 +756,24 @@ class NetOpsRepository:
                     relationship.updated_at,
                 ),
             )
+            if relationship.related_person_id:
+                self.connection.execute(
+                    """
+                    INSERT OR IGNORE INTO relationship_links (
+                        relationship_link_id, source_entity_type, source_entity_id, target_entity_type,
+                        target_entity_id, relationship_type, description, created_at, updated_at
+                    ) VALUES (?, 'person', ?, 'person', ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        relationship.id,
+                        relationship.person_id,
+                        relationship.related_person_id,
+                        relationship.relationship_type,
+                        relationship.notes,
+                        relationship.created_at,
+                        relationship.updated_at,
+                    ),
+                )
         return relationship
 
     def list_relationships(self, person_id: str) -> list[Relationship]:
@@ -229,18 +787,32 @@ class NetOpsRepository:
         with self.connection:
             self.connection.execute(
                 """
-                INSERT INTO interactions (id, person_id, occurred_on, interaction_type, notes, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO interactions (
+                    id, interaction_id, person_id, occurred_on, interaction_date, interaction_type,
+                    notes, summary, follow_up_required, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                 """,
                 (
                     interaction.id,
+                    interaction.id,
                     interaction.person_id,
                     _date_to_text(interaction.occurred_on),
+                    _date_to_text(interaction.occurred_on),
                     interaction.interaction_type,
+                    interaction.notes,
                     interaction.notes,
                     interaction.created_at,
                     interaction.updated_at,
                 ),
+            )
+            self.connection.execute(
+                """
+                INSERT OR IGNORE INTO interaction_people (
+                    interaction_person_id, interaction_id, person_id, role, is_primary, created_at
+                ) VALUES (?, ?, ?, 'primary', 1, ?)
+                """,
+                (f"{interaction.id}-{interaction.person_id}", interaction.id, interaction.person_id, interaction.created_at),
             )
         return interaction
 
@@ -455,6 +1027,24 @@ class NetOpsRepository:
                     contact.updated_at,
                 ),
             )
+            self.connection.execute(
+                """
+                INSERT OR IGNORE INTO contact_methods (
+                    contact_method_id, person_id, type, label, value, normalized_value,
+                    is_primary, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+                """,
+                (
+                    contact.id,
+                    contact.person_id,
+                    contact.kind,
+                    contact.label,
+                    contact.value,
+                    contact.value.strip().lower(),
+                    contact.created_at,
+                    contact.updated_at,
+                ),
+            )
         return contact
 
     def list_person_contacts(self, person_id: str) -> list[PersonContact]:
@@ -474,6 +1064,10 @@ class NetOpsRepository:
         self.get_person_contact(contact_id)
         with self.connection:
             self.connection.execute("DELETE FROM person_contacts WHERE id = ?", (contact_id,))
+            self.connection.execute(
+                "UPDATE contact_methods SET archived_at = ?, updated_at = ? WHERE contact_method_id = ?",
+                (now_iso(), now_iso(), contact_id),
+            )
 
     def add_evaluation(self, evaluation: Evaluation) -> Evaluation:
         with self.connection:
@@ -539,8 +1133,14 @@ class NetOpsRepository:
         interactions = self.list_interactions(person_id, limit=10)
         return Dossier(
             person=person,
+            v1_person=self.get_v1_person(person_id),
             contacts=self.list_person_contacts(person_id),
+            contact_methods=self.list_contact_methods(person_id),
             relationships=self.list_relationships(person_id),
+            v1_interactions=self.list_v1_interactions_for_person(person_id),
+            signals_v1=self.list_signals(person_id),
+            opportunities=self.list_opportunities_for_person(person_id),
+            relationship_links=self.list_relationship_links_for_entity("person", person_id),
             open_loops=self.list_open_loops(person_id),
             recent_interactions=interactions,
             suggestions=self.list_suggestions(person_id),

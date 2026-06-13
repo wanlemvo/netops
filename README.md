@@ -1,6 +1,6 @@
 # NetOps CLI
 
-NetOps CLI is a portable, local-first relationship operations app. It stores structured people dossiers, contact methods, interactions, notes, follow-ups, suggestions, and evaluations in SQLite, with a Windows executable build that can travel with its `data/` folder.
+NetOps CLI is a portable, local-first relationship operations app. It stores people, contact methods, interactions, signals, opportunities, relationship links, follow-ups, suggestions, and evaluations in SQLite, with a Windows executable build that can travel with its `data/` folder.
 
 ## Status
 
@@ -10,19 +10,22 @@ This repository is being cleaned up around the executable CLI app as the main pr
 
 ```text
 netops-cli/
-├── README.md
-├── docs/
-│   ├── project-overview.md
-│   ├── architecture.md
-│   ├── roadmap.md
-│   └── lessons-learned.md
-├── src/
-├── tests/
-├── assets/
-│   ├── screenshots/
-│   └── demo/
-├── scripts/
-└── .gitignore
++-- README.md
++-- docs/
+|   +-- project-overview.md
+|   +-- architecture.md
+|   +-- roadmap.md
+|   +-- lessons-learned.md
+|   +-- architecture/
+|   +-- adr/
+|   +-- schema_v1.md
++-- src/
++-- tests/
++-- assets/
+|   +-- screenshots/
+|   +-- demo/
++-- scripts/
++-- .gitignore
 ```
 
 ## Install For Development
@@ -37,11 +40,13 @@ python -m pip install -e ".[dev]"
 
 ```powershell
 netops --help
-netops people add --name "Avery Chen" --organization "Northwind"
+netops people add --name "Avery Chen" --organization "Northwind" --next-action "Send portfolio" --follow-up-date "2026-06-15"
 netops people list
-netops log "Avery Chen" --type meeting --notes "Discussed migration" --follow-up "Send notes"
-netops loops list
-netops suggest
+netops people contact add "Avery Chen" --type email --value "avery@example.com" --primary
+netops log-v1 --person "Avery Chen" --type meeting --summary "Discussed migration" --action-items "Send notes"
+netops signal add "Avery Chen" --text "Responds well to direct follow-through" --confidence high
+netops opportunity add --person "Avery Chen" --title "Portfolio Review" --follow-up-date "2026-06-15"
+netops loops review-v1
 ```
 
 ## Portable Build
@@ -54,9 +59,11 @@ The portable output is:
 
 ```text
 portable/netops-cli/
-├── netops.exe
-└── data/
-    └── netops.sqlite3
++-- netops.exe
++-- data/
+    +-- netops.sqlite3
+    +-- assets/
+        +-- profile_photos/
 ```
 
 Copy the whole `portable/netops-cli/` folder to move the app and its data together.
@@ -65,6 +72,7 @@ Copy the whole `portable/netops-cli/` folder to move the app and its data togeth
 
 - [Project Overview](docs/project-overview.md)
 - [Architecture](docs/architecture.md)
+- [NetworkOps V1 Architecture](docs/architecture/networkops_v1_architecture.md)
+- [Schema V1](docs/schema_v1.md)
 - [Roadmap](docs/roadmap.md)
 - [Lessons Learned](docs/lessons-learned.md)
-

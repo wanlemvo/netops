@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-specs/003-dynamic-person-dossier/plan.md
+specs/004-person-intelligence-record/plan.md
 <!-- SPECKIT END -->

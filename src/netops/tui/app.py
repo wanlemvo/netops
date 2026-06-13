@@ -154,8 +154,9 @@ class NetOpsTui:
                 style = "class:error" if line.startswith("!") else "class:field"
                 fragments.append((style, f"{line}\n"))
 
-        append_body()
-        if screen.body and screen.items:
+        if screen.name != ScreenName.DOSSIER:
+            append_body()
+        if screen.name != ScreenName.DOSSIER and screen.body and screen.items:
             fragments.append(("", "\n"))
         append_items()
 

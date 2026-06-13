@@ -15,10 +15,16 @@ from netops.storage import NetOpsRepository, connect
 
 app = typer.Typer(help="NetOps tracks people, interactions, follow-ups, suggestions, and outcomes.")
 people_app = typer.Typer(help="Manage people.")
+contact_app = typer.Typer(help="Manage person contact methods.")
 relationship_app = typer.Typer(help="Manage relationship context.")
+signal_app = typer.Typer(help="Manage relationship signals.")
+opportunity_app = typer.Typer(help="Manage relationship opportunities.")
 loops_app = typer.Typer(help="Manage open loops and follow-ups.")
 app.add_typer(people_app, name="people")
+people_app.add_typer(contact_app, name="contact")
 app.add_typer(relationship_app, name="relationship")
+app.add_typer(signal_app, name="signal")
+app.add_typer(opportunity_app, name="opportunity")
 app.add_typer(loops_app, name="loops")
 console = Console()
 
@@ -67,16 +73,185 @@ def people_add(
     name: str = typer.Option(..., "--name", prompt=True, help="Display name."),
     email: Optional[str] = typer.Option(None, "--email", help="Primary email."),
     phone: Optional[str] = typer.Option(None, "--phone", help="Primary phone."),
+    linkedin: Optional[str] = typer.Option(None, "--linkedin", help="LinkedIn profile."),
+    github: Optional[str] = typer.Option(None, "--github", help="GitHub profile."),
+    other_social: Optional[str] = typer.Option(None, "--other-social", help="Other social/contact URL."),
+    alias: Optional[str] = typer.Option(None, "--alias", help="Alias or familiar name."),
+    role: Optional[str] = typer.Option(None, "--role", help="Role or title."),
     organization: Optional[str] = typer.Option(None, "--organization", help="Organization or group."),
+    location: Optional[str] = typer.Option(None, "--location", help="Location."),
+    birthday: Optional[str] = typer.Option(None, "--birthday", help="Birthday as YYYY-MM-DD or YYYY-MM."),
+    profile_photo_path: Optional[str] = typer.Option(None, "--profile-photo", help="Local profile photo path."),
+    relationship_type: Optional[str] = typer.Option(None, "--relationship-type", help="Relationship type."),
+    relationship_status: Optional[str] = typer.Option(None, "--relationship-status", help="Relationship status."),
+    relationship_strength: Optional[str] = typer.Option(None, "--relationship-strength", help="Relationship strength text."),
+    origin_story: Optional[str] = typer.Option(None, "--origin-story", help="How this relationship began."),
+    importance_reason: Optional[str] = typer.Option(None, "--importance-reason", help="Why this person matters."),
+    dossier: Optional[str] = typer.Option(None, "--dossier", help="Long-form person dossier."),
+    interests: Optional[str] = typer.Option(None, "--interests", help="Long-form interests/intelligence."),
+    communication_style: Optional[str] = typer.Option(None, "--communication-style", help="Communication style."),
+    preferences: Optional[str] = typer.Option(None, "--preferences", help="Known preferences."),
+    current_goals: Optional[str] = typer.Option(None, "--current-goals", help="Current goals."),
+    potential_value: Optional[str] = typer.Option(None, "--potential-value", help="Potential relationship value."),
+    first_met: Optional[str] = typer.Option(None, "--first-met", help="First met date as YYYY-MM-DD or YYYY-MM."),
+    last_contact: Optional[str] = typer.Option(None, "--last-contact", help="Last contact date as YYYY-MM-DD or YYYY-MM."),
+    next_action: Optional[str] = typer.Option(None, "--next-action", help="Next relationship action."),
+    follow_up_date: Optional[str] = typer.Option(None, "--follow-up-date", help="Follow-up date as YYYY-MM-DD or YYYY-MM."),
     tag: list[str] = typer.Option([], "--tag", help="Repeatable person tag."),
     notes: Optional[str] = typer.Option(None, "--notes", help="Relationship notes."),
 ) -> None:
     try:
         _, people, *_ = services()
-        person = people.create_person(name=name, email=email, phone=phone, organization=organization, tags=tag, notes=notes)
+        person = people.create_v1_person(
+            name=name,
+            alias=alias,
+            role=role,
+            organization=organization,
+            location=location,
+            birthday=birthday,
+            profile_photo_path=profile_photo_path,
+            relationship_type=relationship_type,
+            relationship_status=relationship_status,
+            relationship_strength=relationship_strength,
+            origin_story=origin_story,
+            importance_reason=importance_reason,
+            dossier=dossier or notes,
+            interests=interests,
+            communication_style=communication_style,
+            preferences=preferences,
+            current_goals=current_goals,
+            potential_value=potential_value,
+            first_met=first_met,
+            last_contact=last_contact,
+            next_action=next_action,
+            follow_up_date=follow_up_date,
+            tags=tag,
+        )
+        for kind, label, value in [
+            ("email", "primary", email),
+            ("phone", "primary", phone),
+            ("social", "LinkedIn", linkedin),
+            ("social", "GitHub", github),
+            ("social", "Other", other_social),
+        ]:
+            if value:
+                people.add_contact(person.person_id, kind=kind, label=label, value=value)
     except Exception as exc:  # pragma: no cover - exercised through CLI tests
         fail(exc)
-    console.print(f"[green]Created person[/] {person.display_name} ({person.id})")
+    console.print(f"[green]Created person[/] {person.name} ({person.person_id})")
+
+
+@people_app.command("show")
+def people_show(
+    person: str = typer.Argument(...),
+    as_json: bool = typer.Option(False, "--json", help="Return JSON."),
+) -> None:
+    try:
+        _, people, *_ = services()
+        record = people.get_v1_person(person)
+    except Exception as exc:
+        fail(exc)
+    if as_json:
+        typer.echo(model_json(record))
+        return
+    table = Table("Field", "Value")
+    for field, value in record.model_dump(mode="json").items():
+        if field.endswith("_at") and field not in {"created_at", "updated_at", "archived_at"}:
+            continue
+        table.add_row(field, str(value or "unset"))
+    console.print(table)
+
+
+@people_app.command("edit")
+def people_edit(
+    person: str = typer.Argument(...),
+    field: str = typer.Option(..., "--field", help="V1 person field to update."),
+    value: str = typer.Option("", "--value", help="New value. Empty clears optional fields."),
+) -> None:
+    try:
+        _, people, *_ = services()
+        record = people.update_v1_person_field(person, field, value)
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Updated person[/] {record.name} ({record.person_id})")
+
+
+@people_app.command("photo")
+def people_photo(
+    person: str = typer.Argument(...),
+    path: str = typer.Option(..., "--path", help="Local profile photo path."),
+    no_copy: bool = typer.Option(False, "--no-copy", help="Store only the provided path."),
+) -> None:
+    try:
+        _, people, *_ = services()
+        record = people.set_profile_photo(person, path, copy_to_assets=not no_copy)
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Updated profile photo[/] {record.profile_photo_path or 'unset'}")
+
+
+@contact_app.command("add")
+def contact_add(
+    person: str = typer.Argument(...),
+    kind: str = typer.Option(..., "--type", help="email, phone, linkedin, github, or other."),
+    value: str = typer.Option(..., "--value", help="Contact value."),
+    label: Optional[str] = typer.Option(None, "--label", help="Optional label."),
+    primary: bool = typer.Option(False, "--primary", help="Make primary for this contact type."),
+) -> None:
+    try:
+        _, people, *_ = services()
+        contact = people.add_contact_method(person, kind=kind, value=value, label=label, is_primary=primary)
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Added contact[/] {contact.type}:{contact.value} ({contact.contact_method_id})")
+
+
+@contact_app.command("list")
+def contact_list(
+    person: str = typer.Argument(...),
+    as_json: bool = typer.Option(False, "--json", help="Return JSON."),
+) -> None:
+    try:
+        _, people, *_ = services()
+        rows = people.list_contact_methods(person)
+    except Exception as exc:
+        fail(exc)
+    if as_json:
+        typer.echo(model_json(rows))
+        return
+    if not rows:
+        console.print("No contact methods for this person.")
+        return
+    table = Table("ID", "Type", "Label", "Value", "Primary")
+    for contact in rows:
+        table.add_row(
+            contact.contact_method_id[:8],
+            contact.type,
+            contact.label or "",
+            contact.value,
+            "yes" if contact.is_primary else "",
+        )
+    console.print(table)
+
+
+@contact_app.command("delete")
+def contact_delete(contact_id: str = typer.Argument(...)) -> None:
+    try:
+        _, people, *_ = services()
+        people.delete_contact_method(contact_id)
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Deleted contact[/] {contact_id}")
+
+
+@contact_app.command("set-primary")
+def contact_set_primary(contact_id: str = typer.Argument(...)) -> None:
+    try:
+        _, people, *_ = services()
+        contact = people.set_primary_contact_method(contact_id)
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Primary contact[/] {contact.type}:{contact.value}")
 
 
 @people_app.command("list")
@@ -91,7 +266,7 @@ def people_list(
     except Exception as exc:
         fail(exc)
     if as_json:
-        console.print(model_json(rows))
+        typer.echo(model_json(rows))
         return
     if not rows:
         console.print("No people yet. Add one with `netops people add --name NAME`.")
@@ -122,6 +297,26 @@ def relationship_add(
     console.print(f"[green]Saved relationship[/] {relationship.relationship_type} ({relationship.id})")
 
 
+@relationship_app.command("link")
+def relationship_link(
+    source_person: str = typer.Argument(...),
+    target_person: str = typer.Argument(...),
+    relationship_type: str = typer.Option(..., "--type", help="Extensible relationship type."),
+    description: Optional[str] = typer.Option(None, "--description", help="Optional relationship context."),
+) -> None:
+    try:
+        _, people, *_ = services()
+        link = people.add_relationship_link(
+            source_person,
+            target_person,
+            relationship_type=relationship_type,
+            description=description,
+        )
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Saved relationship link[/] {link.relationship_type} ({link.relationship_link_id})")
+
+
 @app.command("log")
 def log_interaction(
     person: str = typer.Argument(...),
@@ -150,6 +345,112 @@ def log_interaction(
         console.print(f"[green]Created open loop[/] {loop.description} ({loop.id})")
 
 
+@app.command("log-v1")
+def log_v1_interaction(
+    person: list[str] = typer.Option(..., "--person", help="Repeat for every participant."),
+    interaction_date: Optional[str] = typer.Option(None, "--date", help="YYYY-MM-DD."),
+    interaction_type: Optional[str] = typer.Option(None, "--type", help="Interaction type."),
+    summary: Optional[str] = typer.Option(None, "--summary", help="Interaction summary."),
+    takeaways: Optional[str] = typer.Option(None, "--takeaways", help="Long-form takeaways."),
+    action_items: Optional[str] = typer.Option(None, "--action-items", help="Long-form action items."),
+    sentiment: Optional[str] = typer.Option(None, "--sentiment", help="Optional sentiment."),
+    follow_up_required: bool = typer.Option(False, "--follow-up-required", help="Mark follow-up required."),
+    follow_up_date: Optional[str] = typer.Option(None, "--follow-up-date", help="YYYY-MM-DD."),
+) -> None:
+    try:
+        _, _, interactions, *_ = services()
+        interaction = interactions.log_v1_interaction(
+            person,
+            interaction_date=interaction_date or date.today().isoformat(),
+            interaction_type=interaction_type,
+            summary=summary,
+            takeaways=takeaways,
+            action_items=action_items,
+            sentiment=sentiment,
+            follow_up_required=follow_up_required,
+            follow_up_date=follow_up_date,
+        )
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Saved interaction[/] {interaction.interaction_id}")
+
+
+@signal_app.command("add")
+def signal_add(
+    person: str = typer.Argument(...),
+    text: str = typer.Option(..., "--text", help="Signal text."),
+    confidence: Optional[str] = typer.Option(None, "--confidence", help="Optional confidence."),
+    source_interaction: Optional[str] = typer.Option(None, "--source-interaction", help="Optional source interaction ID."),
+    source: Optional[str] = typer.Option(None, "--source", help="Optional source description."),
+) -> None:
+    try:
+        _, people, *_ = services()
+        signal = people.add_signal(
+            person,
+            text=text,
+            confidence=confidence,
+            source_interaction_id=source_interaction,
+            source_description=source,
+        )
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Saved signal[/] {signal.signal_id}")
+
+
+@signal_app.command("list")
+def signal_list(person: str = typer.Argument(...), as_json: bool = typer.Option(False, "--json")) -> None:
+    try:
+        _, people, *_ = services()
+        rows = people.list_signals(person)
+    except Exception as exc:
+        fail(exc)
+    if as_json:
+        typer.echo(model_json(rows))
+        return
+    table = Table("ID", "Signal", "Confidence")
+    for signal in rows:
+        table.add_row(signal.signal_id[:8], signal.signal_text, signal.confidence or "")
+    console.print(table)
+
+
+@opportunity_app.command("add")
+def opportunity_add(
+    person: list[str] = typer.Option(..., "--person", help="Repeat for every linked person."),
+    title: str = typer.Option(..., "--title", help="Opportunity title."),
+    status: str = typer.Option("open", "--status", help="Opportunity status."),
+    description: Optional[str] = typer.Option(None, "--description", help="Long-form description."),
+    follow_up_date: Optional[str] = typer.Option(None, "--follow-up-date", help="YYYY-MM-DD."),
+) -> None:
+    try:
+        _, people, *_ = services()
+        opportunity = people.add_opportunity(
+            person,
+            title=title,
+            status=status,
+            description=description,
+            follow_up_date=follow_up_date,
+        )
+    except Exception as exc:
+        fail(exc)
+    console.print(f"[green]Saved opportunity[/] {opportunity.title} ({opportunity.opportunity_id})")
+
+
+@opportunity_app.command("list")
+def opportunity_list(person: str = typer.Argument(...), as_json: bool = typer.Option(False, "--json")) -> None:
+    try:
+        _, people, *_ = services()
+        rows = people.list_opportunities(person)
+    except Exception as exc:
+        fail(exc)
+    if as_json:
+        typer.echo(model_json(rows))
+        return
+    table = Table("ID", "Title", "Status", "Follow-Up")
+    for opportunity in rows:
+        table.add_row(opportunity.opportunity_id[:8], opportunity.title, opportunity.status, opportunity.follow_up_date or "")
+    console.print(table)
+
+
 @loops_app.command("list")
 def loops_list(
     person: Optional[str] = typer.Option(None, "--person"),
@@ -163,7 +464,7 @@ def loops_list(
     except Exception as exc:
         fail(exc)
     if as_json:
-        console.print(model_json(rows))
+        typer.echo(model_json(rows))
         return
     if not rows:
         console.print("No open loops match that view.")
@@ -190,6 +491,25 @@ def loops_close(
     console.print(f"[green]Updated open loop[/] {loop.id} -> {loop.status.value}")
 
 
+@loops_app.command("review-v1")
+def loops_review_v1(as_json: bool = typer.Option(False, "--json", help="Return JSON.")) -> None:
+    try:
+        _, _, _, loops, *_ = services()
+        rows = loops.review_v1_follow_ups()
+    except Exception as exc:
+        fail(exc)
+    if as_json:
+        typer.echo(json.dumps(rows, indent=2))
+        return
+    if not rows:
+        console.print("No V1 follow-ups are pending.")
+        return
+    table = Table("Kind", "Title", "Person", "Follow-Up", "Status", "Action")
+    for row in rows:
+        table.add_row(row["kind"], row["title"], row["person"], row["follow_up_date"], row["status"], row["action"])
+    console.print(table)
+
+
 @app.command("suggest")
 def suggest(
     person: Optional[str] = typer.Option(None, "--person"),
@@ -203,7 +523,7 @@ def suggest(
     except Exception as exc:
         fail(exc)
     if as_json:
-        console.print(model_json(rows))
+        typer.echo(model_json(rows))
         return
     if not rows:
         console.print("No useful suggestions right now.")

@@ -53,6 +53,7 @@ Invoke-Checked {
 }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $OutputDir "data") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $OutputDir "data\assets\profile_photos") | Out-Null
 
 Write-Host ""
 Write-Host "Portable app created:"

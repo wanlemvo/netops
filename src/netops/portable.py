@@ -13,8 +13,9 @@ def portable_home() -> Path:
 
 def main() -> None:
     os.environ.setdefault("NETOPS_HOME", str(portable_home()))
+    (Path(os.environ["NETOPS_HOME"]) / "data" / "assets" / "profile_photos").mkdir(parents=True, exist_ok=True)
     if len(sys.argv) == 1:
-        sys.argv.append("--help")
+        sys.argv.append("tui")
 
     from netops.cli import app
 

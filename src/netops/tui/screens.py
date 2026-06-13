@@ -3,8 +3,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from netops.domain.models import DashboardSummary, Dossier, OpenLoop, SuggestedAction
-from netops.tui.dossier import dossier_items
+from netops.tui.dossier import dossier_body, dossier_items
 from netops.tui.state import ItemKind, ScreenName, ScreenState, SelectableItem
+
+
+def _field_body_lines(marker: str, label: str, value: object) -> list[str]:
+    text = str(value or "")
+    lines = text.splitlines() or [""]
+    body = [f"{marker} {label}: {lines[0]}"]
+    body.extend(f"  {' ' * len(label)}  {line}" for line in lines[1:])
+    return body
 
 
 def main_menu_screen() -> ScreenState:
@@ -68,11 +76,15 @@ def people_list_screen(rows: list[dict[str, str]]) -> ScreenState:
 
 def dossier_screen(dossier: Dossier) -> ScreenState:
     person = dossier.person
+    items = dossier_items(dossier)
+    selected_index = next((index for index, item in enumerate(items) if item.target == "log_interaction"), 0)
     return ScreenState(
         name=ScreenName.DOSSIER,
         title=f"Dossier // {person.display_name}",
-        items=dossier_items(dossier),
+        items=items,
+        selected_index=selected_index,
         payload={"person_id": person.id},
+        body=dossier_body(dossier),
         status="UP/DOWN scrolls the full dossier. Enter runs actions under [Actions].",
     )
 
@@ -85,6 +97,7 @@ def add_person_form_screen(draft) -> ScreenState:
         ("organization", "Organization", draft.organization),
         ("location", "Location", draft.location),
         ("birthday", "Birthday", draft.birthday),
+        ("profile_photo_path", "Profile Photo", draft.profile_photo_path),
         ("tags", "Tags", draft.tags),
         ("email", "Email", draft.email),
         ("phone", "Phone", draft.phone),
@@ -92,17 +105,25 @@ def add_person_form_screen(draft) -> ScreenState:
         ("github", "GitHub", draft.github),
         ("other_social", "Other Social", draft.other_social),
         ("relationship_type", "Relationship Type", draft.relationship_type),
+        ("relationship_status", "Relationship Status", draft.relationship_status),
         ("relationship_strength", "Relationship Strength", draft.relationship_strength),
-        ("notes", "Relationship Notes", draft.notes),
+        ("origin_story", "Origin Story", draft.origin_story),
+        ("importance_reason", "Importance Reason", draft.importance_reason),
+        ("dossier", "Dossier", draft.dossier),
         ("interests", "Interests", draft.interests),
         ("communication_style", "Communication Style", draft.communication_style),
-        ("preferences_notes", "Preferences", draft.preferences_notes),
-        ("signals", "Signals", draft.signals),
+        ("preferences", "Preferences", draft.preferences),
+        ("current_goals", "Current Goals", draft.current_goals),
+        ("potential_value", "Potential Value", draft.potential_value),
+        ("first_met", "First Met", draft.first_met),
+        ("last_contact", "Last Contact", draft.last_contact),
+        ("next_action", "Next Action", draft.next_action),
+        ("follow_up_date", "Follow-Up Date", draft.follow_up_date),
     ]
     body = []
     for field_name, label, value in fields:
         marker = ">" if draft.active_field == field_name else " "
-        body.append(f"{marker} {label}: {value}")
+        body.extend(_field_body_lines(marker, label, value))
     if draft.validation_message:
         body.append("")
         body.append(f"! {draft.validation_message}")
@@ -127,7 +148,7 @@ def contact_form_screen(draft) -> ScreenState:
     body = []
     for field_name, label, value in fields:
         marker = ">" if draft.active_field == field_name else " "
-        body.append(f"{marker} {label}: {value}")
+        body.extend(_field_body_lines(marker, label, value))
     if draft.validation_message:
         body.extend(["", f"! {draft.validation_message}"])
     return ScreenState(
@@ -152,7 +173,7 @@ def open_loop_form_screen(draft) -> ScreenState:
     body = []
     for field_name, label, value in fields:
         marker = ">" if draft.active_field == field_name else " "
-        body.append(f"{marker} {label}: {value}")
+        body.extend(_field_body_lines(marker, label, value))
     if draft.validation_message:
         body.extend(["", f"! {draft.validation_message}"])
     return ScreenState(
@@ -179,7 +200,7 @@ def log_interaction_form_screen(draft) -> ScreenState:
     body = []
     for field_name, label, value in fields:
         marker = ">" if draft.active_field == field_name else " "
-        body.append(f"{marker} {label}: {value}")
+        body.extend(_field_body_lines(marker, label, value))
     if draft.validation_message:
         body.append("")
         body.append(f"! {draft.validation_message}")
@@ -218,7 +239,7 @@ def edit_profile_list_screen(person_id: str, fields) -> ScreenState:
 
 
 def edit_field_form_screen(draft) -> ScreenState:
-    body = [f"Field: {draft.label}", f"> Value: {draft.value}"]
+    body = [f"Field: {draft.label}", *_field_body_lines(">", "Value", draft.value)]
     if draft.validation_message:
         body.extend(["", f"! {draft.validation_message}"])
     return ScreenState(
@@ -235,19 +256,19 @@ def edit_field_form_screen(draft) -> ScreenState:
 
 
 def raw_note_form_screen(draft) -> ScreenState:
-    body = [f"> Note: {draft.note}"]
+    body = _field_body_lines(">", "Note", draft.note)
     if draft.validation_message:
         body.extend(["", f"! {draft.validation_message}"])
     return ScreenState(
         name=ScreenName.RAW_NOTE_FORM,
-        title="Append Raw Note",
+        title="Append Legacy Raw Note",
         body=body,
         items=[
             SelectableItem("Save", ItemKind.SAVE_FORM, hint="append note"),
             SelectableItem("Cancel", ItemKind.CANCEL, hint="return to dossier"),
         ],
         payload={"person_id": draft.person_id},
-        status="Saving appends a new raw note and preserves previous notes.",
+        status="Legacy-only note path. V1 relationship intelligence belongs in signals, interactions, and opportunities.",
     )
 
 

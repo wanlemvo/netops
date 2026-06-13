@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from netops.domain.models import Interaction, OpenLoop
+from netops.domain.models import Interaction, InteractionPerson, OpenLoop, V1Interaction
 from netops.domain.validation import require_not_future
 from netops.storage.repositories import NetOpsRepository
 
@@ -51,3 +51,43 @@ class InteractionService:
             return self.repository.timeline(person.id)
         return self.repository.timeline()
 
+    def log_v1_interaction(
+        self,
+        person_queries: list[str],
+        *,
+        interaction_date: str,
+        interaction_type: str | None = None,
+        summary: str | None = None,
+        takeaways: str | None = None,
+        action_items: str | None = None,
+        sentiment: str | None = None,
+        follow_up_required: bool = False,
+        follow_up_date: str | None = None,
+    ) -> V1Interaction:
+        if not person_queries:
+            raise ValueError("At least one person is required.")
+        people = [self.people_service.resolve_person(query) for query in person_queries]
+        interaction = V1Interaction(
+            interaction_date=interaction_date,
+            interaction_type=interaction_type,
+            summary=summary,
+            takeaways=takeaways,
+            action_items=action_items,
+            sentiment=sentiment,
+            follow_up_required=1 if follow_up_required else 0,
+            follow_up_date=follow_up_date,
+        )
+        participants = [
+            InteractionPerson(
+                interaction_id=interaction.interaction_id,
+                person_id=person.id,
+                role="primary" if index == 0 else "participant",
+                is_primary=1 if index == 0 else 0,
+            )
+            for index, person in enumerate(people)
+        ]
+        return self.repository.add_v1_interaction(interaction, participants)
+
+    def list_v1_interactions(self, person_query: str) -> list[V1Interaction]:
+        person = self.people_service.resolve_person(person_query)
+        return self.repository.list_v1_interactions_for_person(person.id)

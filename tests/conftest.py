@@ -20,6 +20,13 @@ def runner(isolated_db):
 
 
 @pytest.fixture()
+def v1_repository(isolated_db):
+    from netops.storage import NetOpsRepository, connect
+
+    return NetOpsRepository(connect(isolated_db))
+
+
+@pytest.fixture()
 def fake_tui_services():
     from dataclasses import dataclass, field
 
@@ -48,6 +55,11 @@ def fake_tui_services():
 
         def create_person(self, *, name, organization=None, tags=None, notes=None, **_):
             person = Person(display_name=name, organization=organization, tags=tags or [], relationship_notes=notes)
+            self.created.append(person)
+            return person
+
+        def create_v1_person(self, *, name, organization=None, tags=None, **_):
+            person = Person(display_name=name, organization=organization, tags=tags or [])
             self.created.append(person)
             return person
 
