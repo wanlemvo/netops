@@ -90,7 +90,7 @@ class NetworkOpsBackend:
             },
             "people": self.list_people(),
             "recent_intel": recent_intel[:10],
-            "follow_ups": follow_ups[:10],
+            "follow_ups": follow_ups,
             "dormant_people": [self._person_list_item(person) for person in dormant_people[:10]],
         }
 
@@ -150,6 +150,10 @@ class NetworkOpsBackend:
 
         return {
             "view": "dossier",
+            "follow_ups": [item for item in self.review_followups() if
+                (item["kind"] == "person" and item["id"] == person.person_id) or
+                (item["kind"] == "interaction" and item["id"] in {x["id"] for x in interactions}) or
+                (item["kind"] == "opportunity" and item["id"] in {x["id"] for x in opportunities})],
             "person": self._person_detail(person, tags=legacy.tags),
             "header": {
                 "title": person.name,
@@ -227,21 +231,33 @@ class NetworkOpsBackend:
 
     def create_person(self, payload: JsonDict) -> JsonDict:
         kwargs = self._person_kwargs(payload, require_name=True)
-        person = self.people.create_v1_person(**kwargs)
-        self._create_inline_contact_methods(person.person_id, payload)
+        with self.repository.connection:
+            person = self.people.create_v1_person(**kwargs)
+            self._create_inline_contact_methods(person.person_id, payload)
         return self.get_person(person.person_id)
 
     def update_person(self, person_query: str, payload: JsonDict) -> JsonDict:
         person_fields = self._person_kwargs(payload, require_name=False)
         person_fields.pop("tags", None)
-        for key, value in person_fields.items():
-            self.people.update_v1_person_field(person_query, key, value)
-        if "tags" in payload:
-            legacy = self.people.resolve_person(person_query)
-            legacy.tags = self._text_list(payload.get("tags"))
-            self.repository.update_person(legacy)
-        self._create_inline_contact_methods(person_query, payload)
-        return self.get_person(person_query)
+        person = self.people.get_v1_person(person_query)
+        updated = V1Person.model_validate({**person.model_dump(), **person_fields})
+        with self.repository.connection:
+            self.repository.update_v1_person(updated)
+            if "tags" in payload:
+                import json
+                self.repository.connection.execute("UPDATE people SET tags = ? WHERE id = ?",
+                    (json.dumps(self._text_list(payload.get("tags"))), person.person_id))
+            self._create_inline_contact_methods(person.person_id, payload)
+        return self.get_person(person.person_id)
+
+    def complete_follow_up(self, kind: str, record_id: str) -> JsonDict:
+        return self.repository.complete_follow_up(kind, record_id)
+
+    def reschedule_follow_up(self, kind: str, record_id: str, payload: JsonDict) -> JsonDict:
+        from netops.domain.validation import normalize_date_text
+        if "follow_up_date" not in payload:
+            raise UserInputError("Follow-up date is required; use null for an unscheduled follow-up.")
+        return self.repository.reschedule_follow_up(kind, record_id, normalize_date_text(payload["follow_up_date"]))
 
     def add_contact_method(self, person_query: str, payload: JsonDict) -> JsonDict:
         contact = self.people.add_contact_method(
@@ -263,7 +279,7 @@ class NetworkOpsBackend:
             takeaways=payload.get("takeaways"),
             action_items=payload.get("action_items"),
             sentiment=payload.get("sentiment"),
-            follow_up_required=bool(payload.get("follow_up_required", False)),
+            follow_up_required=bool(payload.get("follow_up_date")) or payload.get("follow_up_required") in (True, 1, "1", "true", "on"),
             follow_up_date=payload.get("follow_up_date"),
         )
         return interaction.model_dump(mode="json")
@@ -388,6 +404,7 @@ class NetworkOpsBackend:
             "sentiment": interaction.sentiment,
             "follow_up_required": bool(interaction.follow_up_required),
             "follow_up_date": interaction.follow_up_date,
+            "follow_up_completed_at": interaction.follow_up_completed_at,
         }
 
     def _signal_item(self, signal: Signal, *, person: V1Person) -> JsonDict:
@@ -415,6 +432,7 @@ class NetworkOpsBackend:
             "status": opportunity.status,
             "description": opportunity.description,
             "follow_up_date": opportunity.follow_up_date,
+            "follow_up_completed_at": opportunity.follow_up_completed_at,
             "created_at": opportunity.created_at,
             "updated_at": opportunity.updated_at,
         }

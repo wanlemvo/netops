@@ -151,9 +151,9 @@ class PeopleService:
             )
         )
         if tags:
-            legacy_person = self.repository.get_person(person.person_id)
-            legacy_person.tags = tags
-            self.repository.update_person(legacy_person)
+            import json
+            with self.repository.connection:
+                self.repository.connection.execute("UPDATE people SET tags = ? WHERE id = ?", (json.dumps(tags), person.person_id))
         return self.repository.get_v1_person(person.person_id)
 
     def get_v1_person(self, person_query: str) -> V1Person:
@@ -308,10 +308,13 @@ class PeopleService:
             assets_dir.mkdir(parents=True, exist_ok=True)
             destination = assets_dir / f"{person.person_id}{source.suffix.lower()}"
             shutil.copy2(source, destination)
-            stored_path = str(destination)
+            stored_path = str(Path("assets") / "profile_photos" / destination.name)
         return self.update_v1_person_field(person.person_id, "profile_photo_path", stored_path)
 
     def _profile_photo_assets_dir(self) -> Path:
+        database_file = self.repository.connection.execute("PRAGMA database_list").fetchone()[2]
+        if database_file:
+            return Path(database_file).parent / "assets" / "profile_photos"
         netops_home = os.environ.get("NETOPS_HOME")
         if netops_home:
             return Path(netops_home) / "data" / "assets" / "profile_photos"

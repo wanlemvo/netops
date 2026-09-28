@@ -138,6 +138,7 @@ class NetOpsRepository:
             last_contact=_v1_date_text_from_row(data.get("last_contact"), allow_month=True),
             next_action=data.get("next_action"),
             follow_up_date=_v1_date_text_from_row(data.get("follow_up_date"), allow_month=True),
+            follow_up_completed_at=data.get("follow_up_completed_at"),
             created_at=data["created_at"],
             updated_at=data["updated_at"],
             archived_at=data.get("archived_at"),
@@ -158,6 +159,7 @@ class NetOpsRepository:
             sentiment=data.get("sentiment"),
             follow_up_required=data.get("follow_up_required", 0),
             follow_up_date=_v1_date_text_from_row(data.get("follow_up_date")),
+            follow_up_completed_at=data.get("follow_up_completed_at"),
             created_at=data["created_at"],
             updated_at=data["updated_at"],
             archived_at=data.get("archived_at"),
@@ -641,6 +643,7 @@ class NetOpsRepository:
             SELECT person_id, name, next_action, follow_up_date
             FROM people
             WHERE archived_at IS NULL
+              AND follow_up_completed_at IS NULL
               AND (trim(COALESCE(next_action, '')) != '' OR trim(COALESCE(follow_up_date, '')) != '')
             """
         ).fetchall()
@@ -651,6 +654,7 @@ class NetOpsRepository:
             LEFT JOIN opportunity_people op ON op.opportunity_id = o.opportunity_id AND op.is_primary = 1
             LEFT JOIN people p ON p.id = op.person_id
             WHERE o.archived_at IS NULL
+              AND o.follow_up_completed_at IS NULL
               AND lower(o.status) NOT IN ('closed', 'complete', 'completed', 'archived')
               AND trim(COALESCE(o.follow_up_date, '')) != ''
             """
@@ -679,7 +683,55 @@ class NetOpsRepository:
             }
             for row in opportunity_rows
         )
+        interaction_rows = self.connection.execute("""
+            SELECT i.interaction_id, i.summary, i.action_items, i.follow_up_date,
+                   group_concat(p.name, ', ') AS person
+            FROM interactions i
+            LEFT JOIN interaction_people ip ON ip.interaction_id = i.interaction_id
+            LEFT JOIN people p ON p.id = ip.person_id
+            WHERE i.archived_at IS NULL AND i.follow_up_completed_at IS NULL
+              AND i.follow_up_required = 1
+            GROUP BY i.interaction_id
+        """).fetchall()
+        rows.extend({"kind": "interaction", "id": row["interaction_id"],
+                     "title": row["summary"] or "Interaction follow-up",
+                     "action": row["action_items"] or "", "person": row["person"] or "",
+                     "follow_up_date": row["follow_up_date"] or "", "status": "pending"}
+                    for row in interaction_rows)
         return sorted(rows, key=lambda row: (row["follow_up_date"] == "", row["follow_up_date"], row["kind"], row["title"].lower()))
+
+    def _follow_up_record(self, kind: str, record_id: str):
+        targets = {"person": ("people", "person_id"), "interaction": ("interactions", "interaction_id"),
+                   "opportunity": ("opportunities", "opportunity_id")}
+        if kind not in targets:
+            raise UserInputError("Unknown follow-up kind.")
+        table, key = targets[kind]
+        row = self.connection.execute(
+            f"SELECT * FROM {table} WHERE {key} = ? AND archived_at IS NULL", (record_id,)
+        ).fetchone()
+        if row is None:
+            raise NotFoundError("Follow-up record was not found.")
+        return table, key, row
+
+    def complete_follow_up(self, kind: str, record_id: str) -> dict:
+        table, key, _ = self._follow_up_record(kind, record_id)
+        with self.connection:
+            self.connection.execute(
+                f"UPDATE {table} SET follow_up_completed_at = COALESCE(follow_up_completed_at, ?), updated_at = ? WHERE {key} = ?",
+                (now_iso(), now_iso(), record_id),
+            )
+        _, _, row = self._follow_up_record(kind, record_id)
+        return {"kind": kind, "id": record_id, "completed_at": row["follow_up_completed_at"]}
+
+    def reschedule_follow_up(self, kind: str, record_id: str, follow_up_date: str | None) -> dict:
+        table, key, _ = self._follow_up_record(kind, record_id)
+        required = ", follow_up_required = 1" if kind == "interaction" else ""
+        with self.connection:
+            self.connection.execute(
+                f"UPDATE {table} SET follow_up_date = ?, follow_up_completed_at = NULL, updated_at = ?{required} WHERE {key} = ?",
+                (follow_up_date, now_iso(), record_id),
+            )
+        return {"kind": kind, "id": record_id, "follow_up_date": follow_up_date, "completed_at": None}
 
     def update_person(self, person: Person) -> Person:
         person.updated_at = now_iso()

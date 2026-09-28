@@ -130,6 +130,7 @@ class V1Person(NetOpsModel):
     last_contact: str | None = None
     next_action: str | None = None
     follow_up_date: str | None = None
+    follow_up_completed_at: str | None = None
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
     archived_at: str | None = None
@@ -193,6 +194,7 @@ class V1Interaction(NetOpsModel):
     sentiment: str | None = None
     follow_up_required: int = 0
     follow_up_date: str | None = None
+    follow_up_completed_at: str | None = None
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
     archived_at: str | None = None
@@ -260,6 +262,7 @@ class Opportunity(NetOpsModel):
     status: str = "open"
     description: str | None = None
     follow_up_date: str | None = None
+    follow_up_completed_at: str | None = None
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
     closed_at: str | None = None

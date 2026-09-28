@@ -74,7 +74,7 @@ class InteractionService:
             takeaways=takeaways,
             action_items=action_items,
             sentiment=sentiment,
-            follow_up_required=1 if follow_up_required else 0,
+            follow_up_required=1 if follow_up_required or (follow_up_date and follow_up_date.strip()) else 0,
             follow_up_date=follow_up_date,
         )
         participants = [

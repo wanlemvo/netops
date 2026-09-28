@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
-from netops.domain.validation import NetOpsError
+from netops.domain.validation import NetOpsError, NotFoundError
 from netops.services.app_backend import NetworkOpsBackend
 
 JsonDict = dict[str, Any]
@@ -34,6 +34,7 @@ class NetOpsGuiServer:
         else:
             self._backend_factory = NetworkOpsBackend
         self.host = host
+        self._owns_backend = backend is None
         self._httpd = ThreadingHTTPServer((host, port), self._handler())
         self._thread: threading.Thread | None = None
 
@@ -53,7 +54,8 @@ class NetOpsGuiServer:
         self._thread.start()
 
     def stop(self) -> None:
-        self._httpd.shutdown()
+        if self._thread and self._thread.is_alive():
+            self._httpd.shutdown()
         self._httpd.server_close()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2)
@@ -70,39 +72,61 @@ class NetOpsGuiServer:
             def log_message(self, format: str, *args: object) -> None:
                 return
 
+            def backend(self):
+                if not getattr(self, "_request_backend", None):
+                    self._request_backend = gui_server.backend()
+                return self._request_backend
+
+            def _close_backend(self):
+                backend = getattr(self, "_request_backend", None)
+                if backend is not None and gui_server._owns_backend:
+                    backend.repository.connection.close()
+                self._request_backend = None
+
             def do_GET(self) -> None:
                 try:
                     self._route_get()
                 except Exception as exc:  # pragma: no cover - defensive server boundary
                     self._send_error(exc)
+                finally:
+                    self._close_backend()
 
             def do_POST(self) -> None:
                 try:
                     self._route_write("POST")
                 except Exception as exc:  # pragma: no cover - defensive server boundary
                     self._send_error(exc)
+                finally:
+                    self._close_backend()
 
             def do_PATCH(self) -> None:
                 try:
                     self._route_write("PATCH")
                 except Exception as exc:  # pragma: no cover - defensive server boundary
                     self._send_error(exc)
+                finally:
+                    self._close_backend()
 
             def _route_get(self) -> None:
                 parsed = urlparse(self.path)
                 path = parsed.path
                 query = parse_qs(parsed.query)
 
+                if path == "/api/settings":
+                    row = self.backend().repository.connection.execute("PRAGMA database_list").fetchone()
+                    self._send_json({"database_path": row[2], "operator": "Isaac Wanlemvo", "version": "0.2.0"})
+                    return
+
                 if path == "/api/overview":
-                    self._send_json(gui_server.backend().get_overview())
+                    self._send_json(self.backend().get_overview())
                     return
                 if path == "/api/workspace":
-                    self._send_json(gui_server._workspace())
+                    self._send_json(gui_server._workspace(self.backend()))
                     return
                 if path == "/api/people":
                     search = _first_query(query, "search")
                     tag = _first_query(query, "tag")
-                    self._send_json(gui_server.backend().list_people(search=search, tag=tag))
+                    self._send_json(self.backend().list_people(search=search, tag=tag))
                     return
                 if path.startswith("/api/people/") and path.endswith("/profile-photo"):
                     person_id = _path_part(path, 2)
@@ -110,53 +134,74 @@ class NetOpsGuiServer:
                     return
                 if path.startswith("/api/people/") and path.endswith("/dossier"):
                     person_id = _path_part(path, 2)
-                    self._send_json(gui_server.backend().get_dossier(person_id))
+                    self._send_json(self.backend().get_dossier(person_id))
                     return
                 if path.startswith("/api/people/"):
                     person_id = _path_part(path, 2)
-                    self._send_json(gui_server.backend().get_person(person_id))
+                    self._send_json(self.backend().get_person(person_id))
                     return
 
                 self._send_static(path)
 
             def _route_write(self, method: str) -> None:
                 path = urlparse(self.path).path
+                origin = self.headers.get("Origin")
+                if origin and origin != f"http://{self.headers.get('Host')}":
+                    raise ValueError("Requests must originate from this application.")
+                if self.headers.get_content_type() != "application/json":
+                    raise ValueError("Expected an application/json request.")
                 payload = self._read_json()
 
+                parts = path.strip("/").split("/")
+                if len(parts) == 5 and parts[:2] == ["api", "follow-ups"] and parts[4] == "complete" and method == "POST":
+                    self._send_json(self.backend().complete_follow_up(unquote(parts[2]), unquote(parts[3])))
+                    return
+                if len(parts) == 4 and parts[:2] == ["api", "follow-ups"] and method == "PATCH":
+                    self._send_json(self.backend().reschedule_follow_up(unquote(parts[2]), unquote(parts[3]), payload))
+                    return
+
                 if method == "POST" and path == "/api/people":
-                    self._send_json(gui_server.backend().create_person(payload), status=HTTPStatus.CREATED)
+                    self._send_json(self.backend().create_person(payload), status=HTTPStatus.CREATED)
                     return
                 if method == "PATCH" and path.startswith("/api/people/"):
                     person_id = _path_part(path, 2)
-                    self._send_json(gui_server.backend().update_person(person_id, payload))
+                    self._send_json(self.backend().update_person(person_id, payload))
                     return
                 if method == "POST" and path.startswith("/api/people/") and path.endswith("/contacts"):
                     person_id = _path_part(path, 2)
-                    self._send_json(gui_server.backend().add_contact_method(person_id, payload), status=HTTPStatus.CREATED)
+                    self._send_json(self.backend().add_contact_method(person_id, payload), status=HTTPStatus.CREATED)
                     return
                 if method == "POST" and path == "/api/interactions":
-                    self._send_json(gui_server.backend().add_interaction(payload), status=HTTPStatus.CREATED)
+                    self._send_json(self.backend().add_interaction(payload), status=HTTPStatus.CREATED)
                     return
                 if method == "POST" and path.startswith("/api/people/") and path.endswith("/signals"):
                     person_id = _path_part(path, 2)
-                    self._send_json(gui_server.backend().add_signal(person_id, payload), status=HTTPStatus.CREATED)
+                    self._send_json(self.backend().add_signal(person_id, payload), status=HTTPStatus.CREATED)
                     return
                 if method == "POST" and path == "/api/opportunities":
-                    self._send_json(gui_server.backend().add_opportunity(payload), status=HTTPStatus.CREATED)
+                    self._send_json(self.backend().add_opportunity(payload), status=HTTPStatus.CREATED)
                     return
                 if method == "POST" and path == "/api/relationship-links":
-                    self._send_json(gui_server.backend().add_relationship_link(payload), status=HTTPStatus.CREATED)
+                    self._send_json(self.backend().add_relationship_link(payload), status=HTTPStatus.CREATED)
                     return
 
                 self._send_json({"error": "Route not found."}, status=HTTPStatus.NOT_FOUND)
 
             def _send_profile_photo(self, person_id: str) -> None:
-                dossier = gui_server.backend().get_dossier(person_id)
+                dossier = self.backend().get_dossier(person_id)
                 photo_path = dossier.get("header", {}).get("profile_photo_path")
                 if not photo_path:
                     self._send_json({"error": "Profile photo is not set."}, status=HTTPStatus.NOT_FOUND)
                     return
                 path = Path(str(photo_path)).expanduser()
+                database_file = self.backend().repository.connection.execute("PRAGMA database_list").fetchone()[2]
+                if not path.is_absolute():
+                    path = Path(database_file).parent / path
+                elif not path.exists():
+                    # Older releases stored absolute paths; moved portable assets retain their filenames.
+                    moved = Path(database_file).parent / "assets" / "profile_photos" / path.name
+                    if moved.is_file():
+                        path = moved
                 if not path.exists() or not path.is_file():
                     self._send_json({"error": "Profile photo file was not found."}, status=HTTPStatus.NOT_FOUND)
                     return
@@ -206,13 +251,13 @@ class NetOpsGuiServer:
                 self.wfile.write(data)
 
             def _send_error(self, exc: Exception) -> None:
-                status = HTTPStatus.BAD_REQUEST if isinstance(exc, (NetOpsError, ValueError)) else HTTPStatus.INTERNAL_SERVER_ERROR
+                status = HTTPStatus.NOT_FOUND if isinstance(exc, NotFoundError) else HTTPStatus.BAD_REQUEST if isinstance(exc, (NetOpsError, ValueError)) else HTTPStatus.INTERNAL_SERVER_ERROR
                 self._send_json({"error": str(exc)}, status=status)
 
         return NetOpsGuiRequestHandler
 
-    def _workspace(self) -> JsonDict:
-        backend = self.backend()
+    def _workspace(self, backend=None) -> JsonDict:
+        backend = backend or self.backend()
         overview = backend.get_overview()
         interactions: dict[str, JsonDict] = {}
         signals: dict[str, JsonDict] = {}

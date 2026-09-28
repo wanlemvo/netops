@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 MIGRATIONS: list[tuple[int, str]] = [
@@ -339,6 +339,24 @@ MIGRATIONS: list[tuple[int, str]] = [
 ]
 
 
+MIGRATIONS.append((5, """
+ALTER TABLE people ADD COLUMN follow_up_completed_at TEXT;
+ALTER TABLE interactions ADD COLUMN follow_up_completed_at TEXT;
+ALTER TABLE opportunities ADD COLUMN follow_up_completed_at TEXT;
+UPDATE interactions SET follow_up_required = 1
+WHERE trim(COALESCE(follow_up_date, '')) != '' AND follow_up_required = 0;
+CREATE TRIGGER reopen_person_follow_up AFTER UPDATE OF follow_up_date, next_action ON people
+WHEN OLD.follow_up_date IS NOT NEW.follow_up_date OR OLD.next_action IS NOT NEW.next_action
+BEGIN UPDATE people SET follow_up_completed_at = NULL WHERE id = NEW.id; END;
+CREATE TRIGGER reopen_interaction_follow_up AFTER UPDATE OF follow_up_date, follow_up_required ON interactions
+WHEN OLD.follow_up_date IS NOT NEW.follow_up_date OR OLD.follow_up_required IS NOT NEW.follow_up_required
+BEGIN UPDATE interactions SET follow_up_completed_at = NULL WHERE id = NEW.id; END;
+CREATE TRIGGER reopen_opportunity_follow_up AFTER UPDATE OF follow_up_date ON opportunities
+WHEN OLD.follow_up_date IS NOT NEW.follow_up_date
+BEGIN UPDATE opportunities SET follow_up_completed_at = NULL WHERE opportunity_id = NEW.opportunity_id; END;
+"""))
+
+
 def current_version(connection: sqlite3.Connection) -> int:
     connection.execute(
         "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
@@ -349,8 +367,12 @@ def current_version(connection: sqlite3.Connection) -> int:
 
 def migrate(connection: sqlite3.Connection) -> None:
     applied = current_version(connection)
-    with connection:
-        for version, script in MIGRATIONS:
-            if version > applied:
-                connection.executescript(script)
-                connection.execute("INSERT OR IGNORE INTO schema_version(version) VALUES (?)", (version,))
+    for version, script in MIGRATIONS:
+        if version > applied:
+            try:
+                connection.executescript(
+                    f"BEGIN IMMEDIATE;\n{script}\nINSERT INTO schema_version(version) VALUES ({int(version)});\nCOMMIT;"
+                )
+            except Exception:
+                connection.rollback()
+                raise

@@ -5,6 +5,7 @@ const state = {
   selectedPersonId: null,
   selectedDossier: null,
   activeView: "dashboard",
+  dossierTab: "dossier",
 };
 
 const content = document.querySelector("#content");
@@ -58,17 +59,15 @@ function initials(name) {
 
 function avatar(person, className = "avatar") {
   const url = `/api/people/${encodeURIComponent(person.person_id)}/profile-photo`;
-  return `
-    <div class="${className}" title="${escapeHtml(person.name)}">
-      <img src="${url}" alt="" onerror="this.remove(); this.parentElement.textContent='${initials(person.name)}';" />
-    </div>
-  `;
+  return `<div class="${className}" title="${escapeHtml(person.name)}"><span>${escapeHtml(initials(person.name))}</span><img src="${url}" alt="" onerror="this.remove()" /></div>`;
 }
 
 async function load() {
+  const settings = await api("/api/settings");
+  document.querySelector("#database-path").textContent = settings.database_path;
   state.overview = await api("/api/overview");
   state.workspace = await api("/api/workspace");
-  state.people = state.overview.people || [];
+  state.people = searchInput.value ? await api(`/api/people?search=${encodeURIComponent(searchInput.value)}`) : state.overview.people || [];
   if (!state.selectedPersonId && state.people.length) {
     state.selectedPersonId = state.people[0].person_id;
   }
@@ -104,15 +103,7 @@ function renderPeople() {
       </button>
     `)
     .join("");
-  document.querySelectorAll("[data-person]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      state.selectedPersonId = button.dataset.person;
-      state.activeView = "people";
-      await loadSelectedDossier();
-      renderPeople();
-      render();
-    });
-  });
+
 }
 
 function render() {
@@ -159,16 +150,7 @@ function renderDashboard() {
     <section class="panel">
       <h3>Follow-Ups</h3>
       <div class="timeline-list">
-        ${(overview.follow_ups || []).map((item) => `
-          <div class="record-row">
-            <div class="date-block"><strong>${escapeHtml((item.follow_up_date || "--").slice(-2) || "--")}</strong>${escapeHtml(item.follow_up_date || "unscheduled")}</div>
-            <div>
-              <div class="card-title">${escapeHtml(item.title)}</div>
-              <p>${escapeHtml(item.action || item.status || "pending")}</p>
-            </div>
-            <span class="risk-badge">${escapeHtml(item.kind)}</span>
-          </div>
-        `).join("") || `<div class="empty">No follow-ups recorded.</div>`}
+        ${(overview.follow_ups || []).map(renderFollowUp).join("") || `<div class="empty">No follow-ups recorded.</div>`}
       </div>
     </section>
   `;
@@ -181,6 +163,19 @@ function renderDossier() {
     return;
   }
   const person = dossier.person;
+  if (state.dossierTab !== "dossier") {
+    const tabs = {
+      interactions: ["Timeline", "interaction", renderRecord],
+      signals: ["Signals", "signal", renderSignalRecord],
+      opportunities: ["Opportunities", "opportunity", renderOpportunityRecord],
+      connections: ["Relationships", "relationship", renderRelationshipRecord],
+      contacts: ["Contact", "contact", (x) => `<div class="record-row">${escapeHtml(x.type)}: ${escapeHtml(x.value)}</div>`],
+    };
+    const [title, action, renderer] = tabs[state.dossierTab];
+    renderCollection(`${person.name} / ${title}`, dossier.folder_payloads[state.dossierTab] || [], renderer);
+    content.insertAdjacentHTML("afterbegin", dossierTabs() + `<button class="primary-button" data-action="${action}">Add ${title === "Timeline" ? "Interaction" : title}</button>`);
+    return;
+  }
   const contacts = dossier.folder_payloads.contacts || [];
   const interactions = dossier.folder_payloads.interactions || [];
   const signals = dossier.folder_payloads.signals || [];
@@ -215,14 +210,10 @@ function renderDossier() {
           </div>
         </section>
 
-        <div class="tabbar">
-          <button class="tab active">Dossier</button>
-          <button class="tab" data-action="interaction">Timeline</button>
-          <button class="tab" data-action="signal">Signals</button>
-          <button class="tab" data-action="opportunity">Opportunities</button>
-          <button class="tab" data-action="relationship">Relationships</button>
-          <button class="tab" data-action="contact">Contact</button>
-        </div>
+        ${dossierTabs()}
+        <button class="primary-button" data-action="edit">Edit Person</button>
+        <button class="primary-button" data-action="interaction">Log Interaction</button>
+        <section class="panel"><h3>Pending Follow-ups</h3>${(dossier.follow_ups || []).map(renderFollowUp).join("") || "No pending follow-ups."}</section>
 
         <section class="panel">
           <h3>Dossier</h3>
@@ -318,6 +309,7 @@ function renderRecord(item) {
       <div>
         <div class="card-title">${escapeHtml(item.title || item.kind || "Record")}</div>
         <p>${multiline(item.summary || item.text || item.takeaways || "No summary recorded.")}</p>
+        ${item.follow_up_completed_at ? `<div class="muted">Follow-up completed</div>` : item.follow_up_required ? completeButton(item) : ""}
       </div>
       <span class="risk-badge">${escapeHtml(item.person || item.kind || "intel")}</span>
     </div>
@@ -343,6 +335,7 @@ function renderOpportunityRecord(item, index = 0) {
       <div>
         <div class="card-title">${escapeHtml(item.title)}</div>
         <div class="muted">${escapeHtml(item.follow_up_date ? `Follow up by ${item.follow_up_date}` : item.description || "Opportunity")}</div>
+        ${item.follow_up_completed_at ? `<div class="muted">Follow-up completed</div>` : item.follow_up_date && !["closed", "complete", "completed", "archived"].includes(item.status) ? completeButton(item) : ""}
       </div>
       <span class="risk-badge">${escapeHtml(item.status || "open")}</span>
     </div>
@@ -444,6 +437,7 @@ function openModal(kind) {
         field("takeaways", "Takeaways", "textarea"),
         field("action_items", "Action Items", "textarea"),
         field("follow_up_date", "Follow-Up Date"),
+        `<label class="field"><span><input name="follow_up_required" type="checkbox" /> Follow-up required (date optional)</span></label>`,
       ],
     },
     signal: {
@@ -495,7 +489,7 @@ function openModal(kind) {
   `;
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
-  document.querySelector("#form-cancel").addEventListener("click", closeModal);
+
 }
 
 function field(name, label, type = "text", required = false, value = "") {
@@ -531,48 +525,89 @@ function closeModal() {
   modalForm.innerHTML = "";
 }
 
+let saving = false;
+let searchGeneration = 0;
+function feedback(message, error = false) {
+  const box = document.querySelector("#feedback");
+  box.textContent = message;
+  box.classList.toggle("error", error);
+}
+function dossierTabs() {
+  return `<div class="tabbar">${[["dossier", "Dossier"], ["interactions", "Timeline"], ["signals", "Signals"], ["opportunities", "Opportunities"], ["connections", "Relationships"], ["contacts", "Contact"]].map(([id, title]) => `<button class="tab ${state.dossierTab === id ? "active" : ""}" data-tab="${id}">${title}</button>`).join("")}</div>`;
+}
+function completeButton(item) {
+  return `<button class="action-link" data-complete="${escapeHtml(item.id)}" data-kind="${escapeHtml(item.kind)}">Complete follow-up</button>`;
+}
+function renderFollowUp(item) {
+  return `<div class="record-row follow-up-row"><div>${escapeHtml(item.action || item.title)}<div class="muted">${escapeHtml(item.follow_up_date || "Unscheduled")}</div></div>${completeButton(item)}</div>`;
+}
 modalForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const formData = new FormData(modalForm);
-  const payload = Object.fromEntries(formData.entries());
-  if (payload.person_id) {
-    payload.people = [payload.person_id];
-    delete payload.person_id;
-  }
+  if (saving) return;
+  const payload = Object.fromEntries(new FormData(modalForm).entries());
+  if (payload.person_id) { payload.people = [payload.person_id]; delete payload.person_id; }
+  const endpoint = modalForm.dataset.endpoint;
+  const method = modalForm.dataset.method;
+  saving = true;
+  modalForm.querySelector('[type="submit"]').disabled = true;
   try {
-    await api(modalForm.dataset.endpoint, {
-      method: modalForm.dataset.method,
-      body: JSON.stringify(payload),
-    });
+    const result = await api(endpoint, { method, body: JSON.stringify(payload) });
+    if (endpoint === "/api/people" && method === "POST") {
+      searchInput.value = "";
+      state.selectedPersonId = result.person_id;
+      state.activeView = "people";
+      state.dossierTab = "dossier";
+    }
     closeModal();
-    await load();
-    if (state.activeView !== "dashboard") state.activeView = "people";
-    render();
+    feedback("Saved successfully.");
+    try { await load(); } catch (error) { feedback(`Saved, but refresh failed: ${error.message}. Reload to view the saved record.`, true); }
   } catch (error) {
     const box = document.querySelector("#form-error");
     box.textContent = error.message;
     box.classList.remove("hidden");
+  } finally {
+    saving = false;
+    const submit = modalForm.querySelector('[type="submit"]');
+    if (submit) submit.disabled = false;
   }
 });
-
-document.querySelector("#modal-close").addEventListener("click", closeModal);
-document.querySelectorAll("[data-view]").forEach((button) => {
-  button.addEventListener("click", () => {
-    state.activeView = button.dataset.view;
-    render();
-  });
-});
-document.querySelectorAll("[data-action]").forEach((button) => {
-  button.addEventListener("click", () => openModal(button.dataset.action));
+document.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button || button.disabled) return;
+  try {
+    if (button.id === "modal-close" || button.id === "form-cancel") { if (!saving) closeModal(); return; }
+    if (button.dataset.person) {
+      state.selectedPersonId = button.dataset.person;
+      state.activeView = "people";
+      state.dossierTab = "dossier";
+      await loadSelectedDossier(); renderPeople(); render();
+    } else if (button.dataset.tab) {
+      state.dossierTab = button.dataset.tab; render();
+    } else if (button.dataset.view) {
+      state.activeView = button.dataset.view; render();
+    } else if (button.dataset.action) {
+      if (button.dataset.action !== "person" && !state.selectedPersonId) { feedback("Add or select a person first.", true); return; }
+      openModal(button.dataset.action);
+    } else if (button.dataset.complete) {
+      button.disabled = true;
+      await api(`/api/follow-ups/${encodeURIComponent(button.dataset.kind)}/${encodeURIComponent(button.dataset.complete)}/complete`, { method: "POST", body: "{}" });
+      feedback("Follow-up completed."); await load();
+    }
+  } catch (error) { feedback(error.message, true); button.disabled = false; }
 });
 searchInput.addEventListener("input", async () => {
-  state.people = await api(`/api/people?search=${encodeURIComponent(searchInput.value)}`);
-  if (!state.people.some((person) => person.person_id === state.selectedPersonId)) {
-    state.selectedPersonId = state.people[0]?.person_id || null;
-    await loadSelectedDossier();
-  }
-  renderPeople();
-  render();
+  const generation = ++searchGeneration;
+  try {
+    const people = await api(`/api/people?search=${encodeURIComponent(searchInput.value)}`);
+    if (generation !== searchGeneration) return;
+    state.people = people;
+    if (!people.some((p) => p.person_id === state.selectedPersonId)) {
+      state.selectedPersonId = people[0]?.person_id || null;
+      await loadSelectedDossier();
+      if (generation !== searchGeneration) return;
+    }
+    renderPeople(); render();
+  } catch (error) { feedback(error.message, true); }
 });
 
 load().catch((error) => {

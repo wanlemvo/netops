@@ -11,7 +11,7 @@
       <aside class="sidebar">
         <div class="brand-row">
           <div class="brand">NETOPS</div>
-          <div class="version">v1.0.7</div>
+          <div class="version">v0.2.0</div>
         </div>
 
         <div class="nav-group">
@@ -22,9 +22,9 @@
           <button class="nav-item" data-view="signals">Signals</button>
           <button class="nav-item" data-view="opportunities">Opportunities</button>
           <button class="nav-item" data-view="relationships">Relationships</button>
-          <button class="nav-item" data-view="tags">Tags</button>
-          <button class="nav-item" data-view="analytics">Analytics</button>
-          <button class="nav-item" data-view="map">Map View</button>
+          <button class="nav-item" data-view="tags" disabled title="Planned; not implemented">Tags</button>
+          <button class="nav-item" data-view="analytics" disabled title="Planned; not implemented">Analytics</button>
+          <button class="nav-item" data-view="map" disabled title="Planned; not implemented">Map View</button>
         </div>
 
         <div class="nav-group quick-actions">
@@ -44,8 +44,8 @@
         </div>
 
         <div class="sync-card">
-          <div class="nav-label">Sync Status</div>
-          <div class="encrypted">Encrypted</div>
+          <div class="nav-label">Storage</div>
+          <div class="encrypted">Local SQLite · no cloud sync</div>
         </div>
       </aside>
 
@@ -68,18 +68,18 @@
           </div>
           <div class="operator-card">
             <div class="clearance">
-              <span>Clearance Level</span>
-              <strong>Red</strong>
+              <span>Workspace</span>
+              <strong>Personal</strong>
             </div>
-            <div class="operator-avatar">IR</div>
+            <div class="operator-avatar">IW</div>
             <div>
-              <strong>Isaac Rojas</strong>
+              <strong>Isaac Wanlemvo</strong>
               <span>Operator</span>
             </div>
           </div>
         </header>
 
-        <section id="content" class="content"></section>
+        <div id="feedback" role="status" aria-live="polite"></div><details class="storage-details"><summary>Data location</summary><code id="database-path"></code></details><section id="content" class="content"></section>
       </main>
     </div>
 
