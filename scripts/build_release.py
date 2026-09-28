@@ -56,7 +56,7 @@ def main():
                 'dependencies': dict(sorted((d.metadata['Name'], d.version) for d in importlib.metadata.distributions())),
                 'sha256': files}
     (portable / 'build-manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
-    archive = output.with_suffix('.zip')
+    archive = output.parent / (output.name + '.zip')
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
         for p in portable.rglob('*'):
             if p.is_file():

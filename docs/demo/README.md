@@ -4,6 +4,11 @@ All names, organizations, interactions and contact details in these captures are
 The screenshots show the running application, not mockups. The recording is an automated browser
 workflow against the same GUI assets and backend; it is not a recording of the native window.
 
+[Watch the recorded workflow](workflow.webm). The separate native capture below is from the
+rebuilt Windows executable with an isolated fictional database.
+
+![Native Windows application](native-window.png)
+
 Create a separate dataset from the repository root:
 
 ```powershell

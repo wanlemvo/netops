@@ -29,6 +29,8 @@ Thumbs.db
 /.reconciliation/
 *.sqlite3
 *.sqlite3-*
+*.sqlite
+*.sqlite-*
 *.db
 *.db-*
 *.zip

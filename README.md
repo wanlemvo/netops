@@ -77,3 +77,5 @@ claim is made. No project license has been selected; resolve licensing before pu
 [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) ·
 [Feature evidence](docs/feature-inventory.md) · [Reconciliation provenance](docs/provenance.md) ·
 [Release notes](docs/release-notes.md)
+
+[Repository and packaging decisions](docs/repository-guidance.md)

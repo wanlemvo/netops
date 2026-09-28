@@ -30,7 +30,8 @@ creation selects the returned ID. Duplicate names remain distinct records.
 
 New API operations: GET /api/settings reports the actual database file; POST
 /api/follow-ups/{kind}/{id}/complete persists idempotent completion; PATCH
-/api/follow-ups/{kind}/{id} reschedules using follow_up_date (null means unscheduled).
+/api/follow-ups/{kind}/{id} changes follow_up_date. A null date retains an unscheduled interaction
+follow-up; a person still needs a next action, and an opportunity without a date has no scheduled follow-up.
 Kinds are person, interaction and opportunity. Unsupported kinds return 400; missing records 404.
 
 Portable roots are selected using a marker or existing sibling data, independent of outer folder name.
