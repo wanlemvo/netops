@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from netops.domain.validation import normalize_relationship_strength, normalize_text_list
+
 
 def new_id() -> str:
     return uuid4().hex
@@ -60,6 +62,16 @@ class Person(NetOpsModel):
     organization: str | None = None
     tags: list[str] = Field(default_factory=list)
     relationship_notes: str | None = None
+    alias: str | None = None
+    role: str | None = None
+    location: str | None = None
+    relationship_type: str | None = None
+    relationship_strength: str | None = None
+    birthday: str | None = None
+    interests: list[str] = Field(default_factory=list)
+    communication_style: str | None = None
+    preferences_notes: str | None = None
+    signals: list[str] = Field(default_factory=list)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
@@ -73,11 +85,17 @@ class Person(NetOpsModel):
     @field_validator("tags", mode="before")
     @classmethod
     def normalize_tags(cls, value: Any) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, str):
-            return [tag.strip() for tag in value.split(",") if tag.strip()]
-        return [str(tag).strip() for tag in value if str(tag).strip()]
+        return normalize_text_list(value)
+
+    @field_validator("interests", "signals", mode="before")
+    @classmethod
+    def normalize_profile_lists(cls, value: Any) -> list[str]:
+        return normalize_text_list(value)
+
+    @field_validator("relationship_strength", mode="before")
+    @classmethod
+    def normalize_strength(cls, value: Any) -> str | None:
+        return normalize_relationship_strength(value)
 
 
 class Relationship(NetOpsModel):
@@ -177,6 +195,21 @@ class Evaluation(NetOpsModel):
     evaluated_on: date = Field(default_factory=date.today)
     created_at: str = Field(default_factory=now_iso)
 
+
+class RawNoteEntry(NetOpsModel):
+    id: str = Field(default_factory=new_id)
+    person_id: str
+    note: str
+    source: str | None = "dossier"
+    created_at: str = Field(default_factory=now_iso)
+
+    @field_validator("person_id", "note")
+    @classmethod
+    def required_text(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Required raw note value is missing.")
+        return value
+
 class TimelineEntry(NetOpsModel):
     interaction: Interaction
     open_loops: list[OpenLoop] = Field(default_factory=list)
@@ -190,6 +223,8 @@ class Dossier(NetOpsModel):
     recent_interactions: list[Interaction] = Field(default_factory=list)
     suggestions: list[SuggestedAction] = Field(default_factory=list)
     evaluations: list[Evaluation] = Field(default_factory=list)
+    raw_notes: list[RawNoteEntry] = Field(default_factory=list)
+    last_contact: date | None = None
 
 
 class DashboardSummary(NetOpsModel):

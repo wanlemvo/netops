@@ -100,7 +100,12 @@ class NetOpsTui:
         @bindings.add("<any>")
         def any_key(event) -> None:
             data = event.key_sequence[0].data
-            if self.state.current.name == ScreenName.ADD_PERSON_FORM and data and data.isprintable():
+            if self.state.current.name in {
+                ScreenName.ADD_PERSON_FORM,
+                ScreenName.LOG_INTERACTION_FORM,
+                ScreenName.EDIT_FIELD_FORM,
+                ScreenName.RAW_NOTE_FORM,
+            } and data and data.isprintable():
                 self.state.enter_text(data)
                 event.app.invalidate()
 

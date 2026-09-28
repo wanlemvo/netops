@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from netops.domain.models import DashboardSummary, Dossier, OpenLoop
+from netops.tui.dossier import dossier_actions, dossier_body
 from netops.tui.state import ItemKind, ScreenName, ScreenState, SelectableItem
 
 
@@ -38,6 +39,9 @@ def people_list_screen(rows: list[dict[str, str]]) -> ScreenState:
     if not rows:
         items.append(SelectableItem("no people", ItemKind.NOOP, enabled=False, hint="empty list"))
     for row in rows:
+        if row.get("kind") == "header":
+            items.append(SelectableItem(row["name"], ItemKind.NOOP, enabled=False, hint="group"))
+            continue
         label = row["name"]
         context = " | ".join(part for part in [row.get("organization", ""), row.get("tags", "")] if part)
         if context:
@@ -51,7 +55,7 @@ def people_list_screen(rows: list[dict[str, str]]) -> ScreenState:
             )
         )
     items.append(SelectableItem("+ Add Person", ItemKind.OPEN_FORM, hint="create a local person record"))
-    selected_index = 0 if rows else 1
+    selected_index = next((index for index, item in enumerate(items) if item.enabled), 0)
     return ScreenState(
         name=ScreenName.PEOPLE_LIST,
         title="People List",
@@ -63,24 +67,13 @@ def people_list_screen(rows: list[dict[str, str]]) -> ScreenState:
 
 def dossier_screen(dossier: Dossier) -> ScreenState:
     person = dossier.person
-    body = [
-        f"Name: {person.display_name}",
-        f"Organization: {person.organization or 'None'}",
-        f"Tags: {', '.join(person.tags) or 'None'}",
-        f"Relationship notes: {person.relationship_notes or 'None'}",
-        "",
-        f"Open loops: {len(dossier.open_loops)}",
-        f"Recent interactions: {len(dossier.recent_interactions)}",
-        f"Suggestions: {len(dossier.suggestions)}",
-        f"Evaluations: {len(dossier.evaluations)}",
-    ]
     return ScreenState(
         name=ScreenName.DOSSIER,
         title=f"Dossier // {person.display_name}",
-        body=body,
-        items=[SelectableItem("Back", ItemKind.CANCEL, hint="return to People List")],
+        body=dossier_body(dossier),
+        items=dossier_actions(person.id),
         payload={"person_id": person.id},
-        status="Escape returns to People List.",
+        status="Enter selects a dossier action. Escape returns to People List.",
     )
 
 
@@ -110,6 +103,88 @@ def add_person_form_screen(draft) -> ScreenState:
     )
 
 
+def log_interaction_form_screen(draft) -> ScreenState:
+    fields = [
+        ("occurred_on", "Date", draft.occurred_on),
+        ("interaction_type", "Type", draft.interaction_type),
+        ("notes", "Notes", draft.notes),
+        ("follow_up", "Follow-up", draft.follow_up),
+    ]
+    body = []
+    for field_name, label, value in fields:
+        marker = ">" if draft.active_field == field_name else " "
+        body.append(f"{marker} {label}: {value}")
+    if draft.validation_message:
+        body.append("")
+        body.append(f"! {draft.validation_message}")
+    return ScreenState(
+        name=ScreenName.LOG_INTERACTION_FORM,
+        title="Log Interaction",
+        body=body,
+        items=[
+            SelectableItem("Save", ItemKind.SAVE_FORM, hint="log interaction"),
+            SelectableItem("Cancel", ItemKind.CANCEL, hint="return to dossier"),
+        ],
+        payload={"person_id": draft.person_id},
+        status="Type to edit active field. Tab changes field. Enter activates Save/Cancel.",
+    )
+
+
+def edit_profile_list_screen(person_id: str, fields) -> ScreenState:
+    items = [
+        SelectableItem(
+            field.label,
+            ItemKind.OPEN_FORM,
+            target="edit_field",
+            hint=f"{field.section}: {field.current_value or 'unset'}",
+            payload={"person_id": person_id, "field_key": field.key, "current_value": field.current_value},
+        )
+        for field in fields
+    ]
+    items.append(SelectableItem("Back", ItemKind.CANCEL, hint="return to dossier"))
+    return ScreenState(
+        name=ScreenName.EDIT_PROFILE_LIST,
+        title="Edit Profile",
+        items=items,
+        payload={"person_id": person_id},
+        status="Select one field to edit. Escape returns to dossier.",
+    )
+
+
+def edit_field_form_screen(draft) -> ScreenState:
+    body = [f"Field: {draft.label}", f"> Value: {draft.value}"]
+    if draft.validation_message:
+        body.extend(["", f"! {draft.validation_message}"])
+    return ScreenState(
+        name=ScreenName.EDIT_FIELD_FORM,
+        title="Edit Field",
+        body=body,
+        items=[
+            SelectableItem("Save", ItemKind.SAVE_FORM, hint="update field"),
+            SelectableItem("Cancel", ItemKind.CANCEL, hint="return to fields"),
+        ],
+        payload={"person_id": draft.person_id, "field_key": draft.field_key},
+        status="Type to edit value. Empty input clears optional fields.",
+    )
+
+
+def raw_note_form_screen(draft) -> ScreenState:
+    body = [f"> Note: {draft.note}"]
+    if draft.validation_message:
+        body.extend(["", f"! {draft.validation_message}"])
+    return ScreenState(
+        name=ScreenName.RAW_NOTE_FORM,
+        title="Append Raw Note",
+        body=body,
+        items=[
+            SelectableItem("Save", ItemKind.SAVE_FORM, hint="append note"),
+            SelectableItem("Cancel", ItemKind.CANCEL, hint="return to dossier"),
+        ],
+        payload={"person_id": draft.person_id},
+        status="Saving appends a new raw note and preserves previous notes.",
+    )
+
+
 def overview_screen(summary: DashboardSummary) -> ScreenState:
     body = [
         f"People: {summary.total_people}",
@@ -118,6 +193,10 @@ def overview_screen(summary: DashboardSummary) -> ScreenState:
         f"Overdue follow-ups: {summary.overdue_followups}",
         f"Due soon: {summary.due_soon_followups}",
     ]
+    if summary.top_suggestions:
+        body.append("")
+        body.append("[Top Follow-Ups]")
+        body.extend(f"- {suggestion.action_text}" for suggestion in summary.top_suggestions[:3])
     return ScreenState(
         name=ScreenName.OVERVIEW,
         title="Overview",

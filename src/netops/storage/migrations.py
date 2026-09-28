@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 MIGRATIONS: list[tuple[int, str]] = [
@@ -93,7 +93,32 @@ MIGRATIONS: list[tuple[int, str]] = [
         CREATE INDEX IF NOT EXISTS idx_suggestions_person_status ON suggested_actions(person_id, status);
         CREATE INDEX IF NOT EXISTS idx_evaluations_person ON evaluations(person_id, evaluated_on DESC);
         """,
-    )
+    ),
+    (
+        2,
+        """
+        ALTER TABLE people ADD COLUMN alias TEXT;
+        ALTER TABLE people ADD COLUMN role TEXT;
+        ALTER TABLE people ADD COLUMN location TEXT;
+        ALTER TABLE people ADD COLUMN relationship_type TEXT;
+        ALTER TABLE people ADD COLUMN relationship_strength TEXT;
+        ALTER TABLE people ADD COLUMN birthday TEXT;
+        ALTER TABLE people ADD COLUMN interests TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE people ADD COLUMN communication_style TEXT;
+        ALTER TABLE people ADD COLUMN preferences_notes TEXT;
+        ALTER TABLE people ADD COLUMN signals TEXT NOT NULL DEFAULT '[]';
+
+        CREATE TABLE IF NOT EXISTS person_notes (
+            id TEXT PRIMARY KEY,
+            person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+            note TEXT NOT NULL,
+            source TEXT,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_person_notes_person_created ON person_notes(person_id, created_at DESC);
+        """,
+    ),
 ]
 
 
@@ -112,4 +137,3 @@ def migrate(connection: sqlite3.Connection) -> None:
             if version > applied:
                 connection.executescript(script)
                 connection.execute("INSERT OR IGNORE INTO schema_version(version) VALUES (?)", (version,))
-

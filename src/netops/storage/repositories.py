@@ -14,6 +14,7 @@ from netops.domain.models import (
     OpenLoop,
     OpenLoopStatus,
     Person,
+    RawNoteEntry,
     Relationship,
     SuggestedAction,
     SuggestionStatus,
@@ -32,17 +33,26 @@ def _date_from_text(value: str | None) -> date | None:
     return date.fromisoformat(value) if value else None
 
 
+def _list_to_text(values: list[str]) -> str:
+    return json.dumps(values)
+
+
+def _list_from_text(value: str | None) -> list[str]:
+    if not value:
+        return []
+    try:
+        loaded = json.loads(value)
+        return [str(item).strip() for item in loaded if str(item).strip()]
+    except (TypeError, json.JSONDecodeError):
+        return []
+
+
 def _tags_to_text(tags: list[str]) -> str:
     return json.dumps(tags)
 
 
 def _tags_from_text(value: str | None) -> list[str]:
-    if not value:
-        return []
-    try:
-        return list(json.loads(value))
-    except json.JSONDecodeError:
-        return []
+    return _list_from_text(value)
 
 
 class NetOpsRepository:
@@ -53,6 +63,8 @@ class NetOpsRepository:
     def person_from_row(self, row: sqlite3.Row) -> Person:
         data = dict(row)
         data["tags"] = _tags_from_text(data.get("tags"))
+        data["interests"] = _list_from_text(data.get("interests"))
+        data["signals"] = _list_from_text(data.get("signals"))
         return Person(**data)
 
     def relationship_from_row(self, row: sqlite3.Row) -> Relationship:
@@ -76,14 +88,19 @@ class NetOpsRepository:
         data["evaluated_on"] = _date_from_text(data["evaluated_on"])
         return Evaluation(**data)
 
+    def raw_note_from_row(self, row: sqlite3.Row) -> RawNoteEntry:
+        return RawNoteEntry(**dict(row))
+
     def add_person(self, person: Person) -> Person:
         with self.connection:
             self.connection.execute(
                 """
                 INSERT INTO people (
                     id, display_name, given_name, family_name, primary_email, primary_phone,
-                    organization, tags, relationship_notes, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    organization, tags, relationship_notes, alias, role, location, relationship_type,
+                    relationship_strength, birthday, interests, communication_style, preferences_notes,
+                    signals, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     person.id,
@@ -95,6 +112,16 @@ class NetOpsRepository:
                     person.organization,
                     _tags_to_text(person.tags),
                     person.relationship_notes,
+                    person.alias,
+                    person.role,
+                    person.location,
+                    person.relationship_type,
+                    person.relationship_strength,
+                    person.birthday,
+                    _list_to_text(person.interests),
+                    person.communication_style,
+                    person.preferences_notes,
+                    _list_to_text(person.signals),
                     person.created_at,
                     person.updated_at,
                 ),
@@ -108,7 +135,10 @@ class NetOpsRepository:
                 """
                 UPDATE people
                 SET display_name = ?, given_name = ?, family_name = ?, primary_email = ?,
-                    primary_phone = ?, organization = ?, tags = ?, relationship_notes = ?, updated_at = ?
+                    primary_phone = ?, organization = ?, tags = ?, relationship_notes = ?,
+                    alias = ?, role = ?, location = ?, relationship_type = ?, relationship_strength = ?,
+                    birthday = ?, interests = ?, communication_style = ?, preferences_notes = ?,
+                    signals = ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (
@@ -120,6 +150,16 @@ class NetOpsRepository:
                     person.organization,
                     _tags_to_text(person.tags),
                     person.relationship_notes,
+                    person.alias,
+                    person.role,
+                    person.location,
+                    person.relationship_type,
+                    person.relationship_strength,
+                    person.birthday,
+                    _list_to_text(person.interests),
+                    person.communication_style,
+                    person.preferences_notes,
+                    _list_to_text(person.signals),
                     person.updated_at,
                     person.id,
                 ),
@@ -344,6 +384,24 @@ class NetOpsRepository:
             )
         return suggestion
 
+    def add_person_note(self, note: RawNoteEntry) -> RawNoteEntry:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO person_notes (id, person_id, note, source, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (note.id, note.person_id, note.note, note.source, note.created_at),
+            )
+        return note
+
+    def list_person_notes(self, person_id: str) -> list[RawNoteEntry]:
+        rows = self.connection.execute(
+            "SELECT * FROM person_notes WHERE person_id = ? ORDER BY created_at ASC, rowid ASC",
+            (person_id,),
+        ).fetchall()
+        return [self.raw_note_from_row(row) for row in rows]
+
     def add_evaluation(self, evaluation: Evaluation) -> Evaluation:
         with self.connection:
             self.connection.execute(
@@ -405,13 +463,16 @@ class NetOpsRepository:
 
     def dossier(self, person_id: str) -> Dossier:
         person = self.get_person(person_id)
+        interactions = self.list_interactions(person_id, limit=10)
         return Dossier(
             person=person,
             relationships=self.list_relationships(person_id),
             open_loops=self.list_open_loops(person_id),
-            recent_interactions=self.list_interactions(person_id, limit=10),
+            recent_interactions=interactions,
             suggestions=self.list_suggestions(person_id),
             evaluations=self.list_evaluations(person_id),
+            raw_notes=self.list_person_notes(person_id),
+            last_contact=interactions[0].occurred_on if interactions else None,
         )
 
     def timeline(self, person_id: str | None = None) -> list[TimelineEntry]:
@@ -429,4 +490,3 @@ class NetOpsRepository:
             ]
             entries.append(TimelineEntry(interaction=interaction, open_loops=loops, evaluations=evaluations))
         return entries
-

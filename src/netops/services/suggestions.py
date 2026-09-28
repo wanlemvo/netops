@@ -23,6 +23,9 @@ class SuggestionService:
             suggestions = [suggestion for suggestion in suggestions if suggestion.priority_score >= 30]
         return suggestions[:limit]
 
+    def for_dossier(self, person_query: str, *, limit: int = 5) -> list[SuggestedAction]:
+        return self.generate(person_query=person_query, limit=limit, include_low_priority=True)
+
     def save_action(self, suggestion: SuggestedAction) -> SuggestedAction:
         return self.repository.add_suggestion(suggestion)
 
@@ -31,4 +34,3 @@ class SuggestionService:
         suggestion.status = SuggestionStatus(status)
         suggestion.acted_at = now_iso()
         return self.repository.update_suggestion(suggestion)
-

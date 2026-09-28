@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from enum import StrEnum
 from typing import Any, Protocol
 
@@ -11,6 +12,10 @@ class ScreenName(StrEnum):
     PEOPLE_LIST = "people_list"
     DOSSIER = "dossier"
     ADD_PERSON_FORM = "add_person_form"
+    LOG_INTERACTION_FORM = "log_interaction_form"
+    EDIT_PROFILE_LIST = "edit_profile_list"
+    EDIT_FIELD_FORM = "edit_field_form"
+    RAW_NOTE_FORM = "raw_note_form"
     OPEN_LOOPS = "open_loops"
     ERROR = "error"
     EXIT_CONFIRM = "exit_confirm"
@@ -109,9 +114,102 @@ class PersonFormDraft:
         self.active_field = self.fields[(index - 1) % len(self.fields)]
 
 
+@dataclass(slots=True)
+class InteractionDraft:
+    person_id: str = ""
+    occurred_on: str = field(default_factory=lambda: date.today().isoformat())
+    interaction_type: str = "note"
+    notes: str = ""
+    follow_up: str = ""
+    active_field: str = "notes"
+    validation_message: str = ""
+
+    fields: tuple[str, ...] = ("occurred_on", "interaction_type", "notes", "follow_up")
+
+    def has_values(self) -> bool:
+        return any(getattr(self, field_name).strip() for field_name in self.fields)
+
+    def validate(self) -> bool:
+        try:
+            date.fromisoformat(self.occurred_on.strip())
+        except ValueError:
+            self.validation_message = "Date must be YYYY-MM-DD."
+            self.active_field = "occurred_on"
+            return False
+        if not self.interaction_type.strip():
+            self.validation_message = "Interaction type is required."
+            self.active_field = "interaction_type"
+            return False
+        if not self.notes.strip():
+            self.validation_message = "Notes are required."
+            self.active_field = "notes"
+            return False
+        self.validation_message = ""
+        return True
+
+    def append_text(self, text: str) -> None:
+        current = getattr(self, self.active_field)
+        setattr(self, self.active_field, current + text)
+
+    def backspace(self) -> None:
+        current = getattr(self, self.active_field)
+        setattr(self, self.active_field, current[:-1])
+
+    def next_field(self) -> None:
+        index = self.fields.index(self.active_field)
+        self.active_field = self.fields[(index + 1) % len(self.fields)]
+
+    def previous_field(self) -> None:
+        index = self.fields.index(self.active_field)
+        self.active_field = self.fields[(index - 1) % len(self.fields)]
+
+
+@dataclass(slots=True)
+class EditFieldDraft:
+    person_id: str = ""
+    field_key: str = ""
+    label: str = ""
+    value: str = ""
+    validation_message: str = ""
+
+    def has_values(self) -> bool:
+        return bool(self.value.strip())
+
+    def append_text(self, text: str) -> None:
+        self.value += text
+
+    def backspace(self) -> None:
+        self.value = self.value[:-1]
+
+
+@dataclass(slots=True)
+class RawNoteDraft:
+    person_id: str = ""
+    note: str = ""
+    validation_message: str = ""
+
+    def has_values(self) -> bool:
+        return bool(self.note.strip())
+
+    def validate(self) -> bool:
+        if not self.note.strip():
+            self.validation_message = "Note is required."
+            return False
+        self.validation_message = ""
+        return True
+
+    def append_text(self, text: str) -> None:
+        self.note += text
+
+    def backspace(self) -> None:
+        self.note = self.note[:-1]
+
+
 class TuiServices(Protocol):
     people: Any
+    interactions: Any
     loops: Any
+    suggestions: Any
 
 
 class TuiState:
@@ -120,6 +218,9 @@ class TuiState:
         self.stack: list[ScreenState] = []
         self.exit_requested = False
         self.form_draft = PersonFormDraft()
+        self.interaction_draft = InteractionDraft()
+        self.edit_field_draft = EditFieldDraft()
+        self.raw_note_draft = RawNoteDraft()
         self.current = self.build_main_menu()
 
     def build_main_menu(self) -> ScreenState:
@@ -140,23 +241,47 @@ class TuiState:
 
     def move_up(self) -> ScreenState:
         if self.current.items:
-            self.current.selected_index = max(0, self.current.selected_index - 1)
+            for index in range(self.current.selected_index - 1, -1, -1):
+                if self.current.items[index].enabled:
+                    self.current.selected_index = index
+                    break
         return self.current
 
     def move_down(self) -> ScreenState:
         if self.current.items:
-            self.current.selected_index = min(len(self.current.items) - 1, self.current.selected_index + 1)
+            for index in range(self.current.selected_index + 1, len(self.current.items)):
+                if self.current.items[index].enabled:
+                    self.current.selected_index = index
+                    break
         return self.current
 
     def enter_text(self, text: str) -> ScreenState:
         if self.current.name == ScreenName.ADD_PERSON_FORM and text:
             self.form_draft.append_text(text)
             self.refresh_current()
+        elif self.current.name == ScreenName.LOG_INTERACTION_FORM and text:
+            self.interaction_draft.append_text(text)
+            self.refresh_current()
+        elif self.current.name == ScreenName.EDIT_FIELD_FORM and text:
+            self.edit_field_draft.append_text(text)
+            self.refresh_current()
+        elif self.current.name == ScreenName.RAW_NOTE_FORM and text:
+            self.raw_note_draft.append_text(text)
+            self.refresh_current()
         return self.current
 
     def backspace(self) -> ScreenState:
         if self.current.name == ScreenName.ADD_PERSON_FORM:
             self.form_draft.backspace()
+            self.refresh_current()
+        elif self.current.name == ScreenName.LOG_INTERACTION_FORM:
+            self.interaction_draft.backspace()
+            self.refresh_current()
+        elif self.current.name == ScreenName.EDIT_FIELD_FORM:
+            self.edit_field_draft.backspace()
+            self.refresh_current()
+        elif self.current.name == ScreenName.RAW_NOTE_FORM:
+            self.raw_note_draft.backspace()
             self.refresh_current()
         return self.current
 
@@ -166,6 +291,12 @@ class TuiState:
                 self.form_draft.previous_field()
             else:
                 self.form_draft.next_field()
+            self.refresh_current()
+        elif self.current.name == ScreenName.LOG_INTERACTION_FORM:
+            if backwards:
+                self.interaction_draft.previous_field()
+            else:
+                self.interaction_draft.next_field()
             self.refresh_current()
         return self.current
 
@@ -179,9 +310,31 @@ class TuiState:
         if item.kind == ItemKind.OPEN_DOSSIER:
             return NavigationResult(self.open_dossier(item.target or ""))
         if item.kind == ItemKind.OPEN_FORM:
+            if item.target == "log_interaction":
+                self.interaction_draft = InteractionDraft(person_id=item.payload["person_id"])
+                return NavigationResult(self.push(self.build_log_interaction_form()))
+            if item.target == "edit_profile":
+                return NavigationResult(self.push(self.build_edit_profile_list(item.payload["person_id"])))
+            if item.target == "edit_field":
+                self.edit_field_draft = EditFieldDraft(
+                    person_id=item.payload["person_id"],
+                    field_key=item.payload["field_key"],
+                    label=item.label,
+                    value=item.payload.get("current_value", ""),
+                )
+                return NavigationResult(self.push(self.build_edit_field_form()))
+            if item.target == "append_raw_note":
+                self.raw_note_draft = RawNoteDraft(person_id=item.payload["person_id"])
+                return NavigationResult(self.push(self.build_raw_note_form()))
             self.form_draft = PersonFormDraft()
             return NavigationResult(self.push(self.build_add_person_form()))
         if item.kind == ItemKind.SAVE_FORM:
+            if self.current.name == ScreenName.LOG_INTERACTION_FORM:
+                return NavigationResult(self.save_interaction_form())
+            if self.current.name == ScreenName.EDIT_FIELD_FORM:
+                return NavigationResult(self.save_edit_field_form())
+            if self.current.name == ScreenName.RAW_NOTE_FORM:
+                return NavigationResult(self.save_raw_note_form())
             return NavigationResult(self.save_person_form())
         if item.kind == ItemKind.CONFIRM_EXIT:
             if item.target == "yes":
@@ -207,6 +360,11 @@ class TuiState:
             self.current.status = "Unsaved draft discarded. Press Escape again from People to go back."
             self.form_draft = PersonFormDraft()
             return self.pop()
+        if self.current.name == ScreenName.LOG_INTERACTION_FORM and self.interaction_draft.has_values():
+            self.interaction_draft = InteractionDraft()
+            return self.pop()
+        if self.current.name in {ScreenName.EDIT_PROFILE_LIST, ScreenName.EDIT_FIELD_FORM, ScreenName.RAW_NOTE_FORM}:
+            return self.pop()
         return self.pop()
 
     def open_screen(self, name: ScreenName) -> ScreenState:
@@ -228,7 +386,9 @@ class TuiState:
         from netops.tui.screens import dossier_screen
 
         try:
-            dossier = self.services.people.repository.dossier(person_id)
+            dossier = self.services.people.dossier(person_id)
+            if hasattr(self.services, "suggestions"):
+                dossier.suggestions = self.services.suggestions.for_dossier(person_id)
             return self.push(dossier_screen(dossier))
         except Exception as exc:
             return self.push(self.build_error(f"Could not load dossier: {exc}"))
@@ -248,9 +408,58 @@ class TuiState:
         self.stack = [self.build_main_menu()]
         return self.current
 
+    def save_interaction_form(self) -> ScreenState:
+        if not self.interaction_draft.validate():
+            self.refresh_current()
+            return self.current
+        self.services.interactions.log_interaction(
+            self.interaction_draft.person_id,
+            occurred_on=date.fromisoformat(self.interaction_draft.occurred_on.strip()),
+            interaction_type=self.interaction_draft.interaction_type.strip(),
+            notes=self.interaction_draft.notes.strip(),
+            follow_up=self.interaction_draft.follow_up.strip() or None,
+        )
+        person_id = self.interaction_draft.person_id
+        self.interaction_draft = InteractionDraft()
+        self.current = self.pop()
+        return self.open_dossier(person_id)
+
+    def save_edit_field_form(self) -> ScreenState:
+        try:
+            self.services.people.update_profile_field(
+                self.edit_field_draft.person_id,
+                self.edit_field_draft.field_key,
+                self.edit_field_draft.value,
+            )
+        except Exception as exc:
+            self.edit_field_draft.validation_message = str(exc)
+            self.refresh_current()
+            return self.current
+        person_id = self.edit_field_draft.person_id
+        self.edit_field_draft = EditFieldDraft()
+        self.pop()
+        self.pop()
+        return self.open_dossier(person_id)
+
+    def save_raw_note_form(self) -> ScreenState:
+        if not self.raw_note_draft.validate():
+            self.refresh_current()
+            return self.current
+        self.services.people.append_raw_note(self.raw_note_draft.person_id, self.raw_note_draft.note.strip())
+        person_id = self.raw_note_draft.person_id
+        self.raw_note_draft = RawNoteDraft()
+        self.pop()
+        return self.open_dossier(person_id)
+
     def refresh_current(self) -> ScreenState:
         if self.current.name == ScreenName.ADD_PERSON_FORM:
             self.current = self.build_add_person_form()
+        elif self.current.name == ScreenName.LOG_INTERACTION_FORM:
+            self.current = self.build_log_interaction_form()
+        elif self.current.name == ScreenName.EDIT_FIELD_FORM:
+            self.current = self.build_edit_field_form()
+        elif self.current.name == ScreenName.RAW_NOTE_FORM:
+            self.current = self.build_raw_note_form()
         elif self.current.name == ScreenName.PEOPLE_LIST:
             selected = self.current.selected_index
             self.current = self.build_people_list()
@@ -260,6 +469,8 @@ class TuiState:
     def build_people_list(self) -> ScreenState:
         from netops.tui.screens import people_list_screen
 
+        if hasattr(self.services.people, "grouped_directory_rows"):
+            return people_list_screen(self.services.people.grouped_directory_rows())
         return people_list_screen(self.services.people.directory_rows())
 
     def build_overview(self) -> ScreenState:
@@ -276,6 +487,26 @@ class TuiState:
         from netops.tui.screens import add_person_form_screen
 
         return add_person_form_screen(self.form_draft)
+
+    def build_log_interaction_form(self) -> ScreenState:
+        from netops.tui.screens import log_interaction_form_screen
+
+        return log_interaction_form_screen(self.interaction_draft)
+
+    def build_edit_profile_list(self, person_id: str) -> ScreenState:
+        from netops.tui.screens import edit_profile_list_screen
+
+        return edit_profile_list_screen(person_id, self.services.people.editable_fields(person_id))
+
+    def build_edit_field_form(self) -> ScreenState:
+        from netops.tui.screens import edit_field_form_screen
+
+        return edit_field_form_screen(self.edit_field_draft)
+
+    def build_raw_note_form(self) -> ScreenState:
+        from netops.tui.screens import raw_note_form_screen
+
+        return raw_note_form_screen(self.raw_note_draft)
 
     def build_exit_confirm(self) -> ScreenState:
         from netops.tui.screens import exit_confirm_screen
