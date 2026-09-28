@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Data Model: Keyboard TUI Navigation
 
 This feature does not add persistent business entities. It adds transient interaction-layer state while reusing existing NetOps records.

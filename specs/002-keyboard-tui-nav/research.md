@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Research: Keyboard TUI Navigation
 
 ## Decision: Use prompt_toolkit 3.x for the keyboard-driven terminal interface

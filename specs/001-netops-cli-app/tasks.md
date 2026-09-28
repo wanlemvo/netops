@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Tasks: NetOps CLI App
 
 **Input**: Design documents from `specs/001-netops-cli-app/`

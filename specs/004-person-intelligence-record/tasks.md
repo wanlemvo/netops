@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Tasks: NetworkOps Person Intelligence Record
 
 **Input**: Design documents from `specs/004-person-intelligence-record/`

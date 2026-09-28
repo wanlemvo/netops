@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Feature Specification: NetOps CLI App
 
 **Feature Branch**: `001-netops-cli-app`  

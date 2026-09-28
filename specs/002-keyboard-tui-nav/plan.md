@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Implementation Plan: Keyboard TUI Navigation
 
 **Branch**: `002-keyboard-tui-nav` | **Date**: 2026-05-05 | **Spec**: [spec.md](spec.md)

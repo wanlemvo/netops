@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Feature Specification: NetworkOps Desktop GUI Shell
 
 **Feature Branch**: `005-desktop-gui-shell`  

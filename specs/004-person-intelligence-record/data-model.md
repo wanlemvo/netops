@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Data Model: NetworkOps Person Intelligence Record
 
 This feature data model follows the approved schema in `docs/schema_v1.md`.

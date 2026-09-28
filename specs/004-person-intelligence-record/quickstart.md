@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Quickstart: NetworkOps V1 Person Intelligence Record
 
 ## Purpose

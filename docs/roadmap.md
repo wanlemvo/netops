@@ -1,38 +1,17 @@
 # Roadmap
 
-## Near-Term Cleanup
+## Before publication
 
-- Keep CLI/executable workflow as the primary app surface.
-- Decide whether to remove, archive, or fully separate the existing TUI code.
-- Keep generated binaries and local databases out of git.
-- Consolidate old Spec Kit artifacts or move them under documentation/archive.
-- Add screenshots and demo assets under `assets/`.
+- Review the local Windows candidate and the verification report.
+- Decide the project license and confirm third-party distribution notices.
+- Review historical documentation/examples for personal context before sharing.
+- Publish only after explicit approval; this reconciliation does not push or release anything.
 
-## Product Improvements
+## Later, after the core workflow
 
-- Continue refining structured contact methods, primary contact selection, and profile photo handling.
-- Add edit flows for open-loop due dates, notes, and priority.
-- Improve suggestion lifecycle and explainability.
-- Add export/backup workflows for the SQLite database.
-- Add safer restore/import behavior for portable use.
+- GUI profile-photo import and richer contact editing.
+- Dedicated tag management and accessibility refinements.
+- Better rescheduling controls and optional follow-up reminders.
+- Evaluate analytics only against a defined user need.
 
-## Architecture Improvements
-
-- Split CLI commands from workflow/use-case logic more cleanly.
-- Keep domain models separate from persistence mapping.
-- Reduce state-machine complexity if the TUI is retained.
-- Continue expanding explicit relationship edges through `relationship_links`.
-- Preserve the distinction between profile data and interaction/event history.
-
-## Future Ideas
-
-- Contextual AI summaries grounded in the local dossier.
-- Relationship graph views or graph-like traversal.
-- Evidence-backed suggestions.
-- Semantic search over local relationship intelligence.
-- Graph visualization.
-- Automation and reminders.
-- Solo module integration.
-- External system integrations such as Obsidian, Notion, Gmail, or calendar tools.
-
-These future ideas are intentionally outside the NetworkOps V1 implementation scope.
+AI, graph visualization, cloud sync and external assistant integrations are outside this release.

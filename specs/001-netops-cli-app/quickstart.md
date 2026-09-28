@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Quickstart: NetOps CLI App
 
 This quickstart describes the planned developer and user validation flow for the feature.

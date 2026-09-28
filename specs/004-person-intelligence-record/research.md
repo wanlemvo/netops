@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Research: NetworkOps Person Intelligence Record
 
 ## Decision: Use SQLite for local-first structured storage

@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Implementation Plan: NetworkOps Person Intelligence Record
 
 **Branch**: `004-person-intelligence-record` | **Date**: 2026-06-10 | **Spec**: [spec.md](spec.md)  

@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Tasks: Dynamic Person Dossier
 
 **Input**: Design documents from `specs/003-dynamic-person-dossier/`

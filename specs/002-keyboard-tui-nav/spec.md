@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Feature Specification: Keyboard TUI Navigation
 
 **Feature Branch**: `002-keyboard-tui-nav`  

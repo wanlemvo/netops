@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Feature Specification: NetworkOps Person Intelligence Record
 
 **Feature Branch**: `004-person-intelligence-record`  

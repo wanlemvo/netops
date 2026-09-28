@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netops-cli"
-version = "0.1.0"
-description = "Portable local-first relationship operations CLI"
+version = "0.2.0"
+description = "Local-first relationship operations desktop application"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -18,7 +18,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "build>=1.2",
+    "playwright>=1.50",
 ]
+gui = ["pywebview>=6.2.1"]
 portable = [
     "pyinstaller>=6.0",
     "pywebview>=6.2.1",
@@ -27,6 +30,9 @@ portable = [
 [project.scripts]
 netops = "netops.cli:app"
 netops-portable = "netops.portable:main"
+
+[project.gui-scripts]
+netops-gui = "netops.gui.server:launch_gui"
 
 [tool.setuptools.packages.find]
 where = ["src"]

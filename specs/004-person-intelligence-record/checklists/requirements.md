@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../../README.md).
+
 # Specification Quality Checklist: NetworkOps Person Intelligence Record
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
