@@ -54,7 +54,7 @@ def test_keyboard_flow_edits_profile_field_and_appends_raw_note(isolated_db):
     person = services.people.create_person(name="Avery Chen")
     state = TuiState(services)
     state.open_dossier(person.id)
-    state.current.selected_index = 1
+    state.current.selected_index = 2
     state.activate()
     assert state.current.name == ScreenName.EDIT_PROFILE_LIST
     state.current.selected_index = 3
@@ -64,7 +64,7 @@ def test_keyboard_flow_edits_profile_field_and_appends_raw_note(isolated_db):
     state.save_edit_field_form()
     assert "Role: Founder" in "\n".join(state.current.body)
 
-    state.current.selected_index = 2
+    state.current.selected_index = 4
     state.activate()
     assert state.current.name == ScreenName.RAW_NOTE_FORM
     state.raw_note_draft.note = "Prefers concise Friday updates"

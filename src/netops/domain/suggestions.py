@@ -30,6 +30,7 @@ def generate_suggestions(repository, *, person_id: str | None = None) -> list[Su
                 reasons.append("recent negative outcome suggests a careful tone")
             suggestions.append(
                 SuggestedAction(
+                    id=f"loop-{loop.id}",
                     person_id=person.id,
                     open_loop_id=loop.id,
                     action_text=f"Follow up with {person.display_name}: {loop.description}",
@@ -44,6 +45,7 @@ def generate_suggestions(repository, *, person_id: str | None = None) -> list[Su
             if days >= 30:
                 suggestions.append(
                     SuggestedAction(
+                        id=f"checkin-{person.id}",
                         person_id=person.id,
                         action_text=f"Check in with {person.display_name}",
                         reason=f"last interaction was {days} days ago",
@@ -53,6 +55,7 @@ def generate_suggestions(repository, *, person_id: str | None = None) -> list[Su
         elif not open_loops and not last_interactions:
             suggestions.append(
                 SuggestedAction(
+                    id=f"firstlog-{person.id}",
                     person_id=person.id,
                     action_text=f"Log first interaction with {person.display_name}",
                     reason="no interaction history exists yet",
@@ -62,4 +65,3 @@ def generate_suggestions(repository, *, person_id: str | None = None) -> list[Su
 
     suggestions.sort(key=lambda suggestion: (-suggestion.priority_score, suggestion.action_text.lower()))
     return suggestions
-

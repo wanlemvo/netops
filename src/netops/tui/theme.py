@@ -15,9 +15,16 @@ CYBERPUNK_STYLE = Style.from_dict(
         "status": "#00aaff",
         "field": "#ffffff",
         "field_active": "reverse #ffffff",
+        "logo": "bold #9dff00",
+        "logo_accent": "bold #ff2bd6",
     }
 )
 
-HEADER = "NETOPS // RELATIONSHIP OPS TERMINAL"
+HEADER = r"""
+ _   _  _____  _____  ____  ____  ____
+| \ | || ____||_   _|/ __ \|  _ \/ ___|
+|  \| ||  _|    | | | |  | | |_) \___ \
+| |\  || |___   | | | |__| |  __/ ___) |
+|_| \_||_____|  |_|  \____/|_|   |____/
+"""
 FOOTER = "UP/DOWN move  ENTER select  ESC back"
-

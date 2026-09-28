@@ -11,9 +11,18 @@ class OpenLoopService:
         self.repository = repository
         self.people_service = people_service
 
-    def create(self, person_query: str, description: str, *, due_on: date | None = None) -> OpenLoop:
+    def create(
+        self,
+        person_query: str,
+        description: str,
+        *,
+        due_on: date | None = None,
+        priority: int | None = None,
+    ) -> OpenLoop:
         person = self.people_service.resolve_person(person_query)
-        return self.repository.add_open_loop(OpenLoop(person_id=person.id, description=description, due_on=due_on))
+        return self.repository.add_open_loop(
+            OpenLoop(person_id=person.id, description=description, due_on=due_on, priority=priority)
+        )
 
     def list(self, *, person_query: str | None = None, status: str | None = None, overdue: bool = False) -> list[OpenLoop]:
         person_id = self.people_service.resolve_person(person_query).id if person_query else None
@@ -34,3 +43,8 @@ class OpenLoopService:
         loop.due_on = due_on
         return self.repository.update_open_loop(loop)
 
+    def delete(self, loop_id: str) -> None:
+        self.repository.delete_open_loop(loop_id)
+
+    def review_v1_follow_ups(self) -> list[dict[str, str]]:
+        return self.repository.list_v1_follow_ups()

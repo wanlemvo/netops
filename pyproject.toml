@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "netops-cli"
 version = "0.1.0"
-description = "Local-first relationship tracking CLI and TUI"
-readme = "specs/001-netops-cli-app/quickstart.md"
+description = "Portable local-first relationship operations CLI"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0",
@@ -19,12 +19,20 @@ dependencies = [
 dev = [
     "pytest>=8.0",
 ]
+portable = [
+    "pyinstaller>=6.0",
+    "pywebview>=6.2.1",
+]
 
 [project.scripts]
 netops = "netops.cli:app"
+netops-portable = "netops.portable:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"netops.gui" = ["static/*.html", "static/*.css", "static/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

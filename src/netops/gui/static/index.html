@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NetworkOps</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-row">
+          <div class="brand">NETOPS</div>
+          <div class="version">v1.0.7</div>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-label">Main Navigation</div>
+          <button class="nav-item active" data-view="dashboard">Dashboard</button>
+          <button class="nav-item" data-view="people">People</button>
+          <button class="nav-item" data-view="interactions">Interactions</button>
+          <button class="nav-item" data-view="signals">Signals</button>
+          <button class="nav-item" data-view="opportunities">Opportunities</button>
+          <button class="nav-item" data-view="relationships">Relationships</button>
+          <button class="nav-item" data-view="tags">Tags</button>
+          <button class="nav-item" data-view="analytics">Analytics</button>
+          <button class="nav-item" data-view="map">Map View</button>
+        </div>
+
+        <div class="nav-group quick-actions">
+          <div class="nav-label">Quick Actions</div>
+          <button class="action-link" data-action="person">Add Person</button>
+          <button class="action-link" data-action="interaction">Log Interaction</button>
+          <button class="action-link" data-action="signal">Add Signal</button>
+          <button class="action-link" data-action="opportunity">Add Opportunity</button>
+        </div>
+
+        <div class="network-card">
+          <div class="nav-label">Network Status</div>
+          <div class="active-status">Active</div>
+          <div class="world-map" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <div class="sync-card">
+          <div class="nav-label">Sync Status</div>
+          <div class="encrypted">Encrypted</div>
+        </div>
+      </aside>
+
+      <section class="people-rail">
+        <div class="rail-head">
+          <div>
+            <div class="rail-title">All People</div>
+            <div class="rail-subtitle"><span id="people-count">0</span> total</div>
+          </div>
+          <div id="people-total" class="rail-count">0 total</div>
+        </div>
+        <div id="people-list" class="people-list"></div>
+      </section>
+
+      <main class="main-stage">
+        <header class="topbar">
+          <div class="search-box">
+            <span class="search-mark">/</span>
+            <input id="search-input" type="search" placeholder="Search people, organizations, keywords..." />
+          </div>
+          <div class="operator-card">
+            <div class="clearance">
+              <span>Clearance Level</span>
+              <strong>Red</strong>
+            </div>
+            <div class="operator-avatar">IR</div>
+            <div>
+              <strong>Isaac Rojas</strong>
+              <span>Operator</span>
+            </div>
+          </div>
+        </header>
+
+        <section id="content" class="content"></section>
+      </main>
+    </div>
+
+    <div id="modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-panel">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">NetworkOps Entry</div>
+            <h2 id="modal-title">Add Record</h2>
+          </div>
+          <button id="modal-close" class="icon-button" type="button">Close</button>
+        </div>
+        <form id="modal-form" class="modal-form"></form>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

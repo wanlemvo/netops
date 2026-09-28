@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*.exe
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -8,8 +9,13 @@ __pycache__/
 htmlcov/
 .venv/
 venv/
+.netops-staging/
+/data/
+/netops/
 dist/
 build/
+portable/
+.tmp/
 *.egg-info/
 .env
 .env.*
@@ -20,3 +26,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+/.reconciliation/
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.zip
+/artifacts/
