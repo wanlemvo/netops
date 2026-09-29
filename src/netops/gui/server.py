@@ -112,6 +112,13 @@ class NetOpsGuiServer:
                 path = parsed.path
                 query = parse_qs(parsed.query)
 
+                parts = path.strip('/').split('/')
+                if len(parts) == 6 and parts[:2] == ['api', 'people'] and parts[3] == 'sections' and parts[5] == 'history':
+                    from netops.services.casefile import render_text
+                    rows = self.backend().repository.dossier_section_history(unquote(parts[2]), unquote(parts[4]))
+                    self._send_json([{**row, 'html': render_text(row['body'], row['format'])} for row in rows])
+                    return
+
                 if path == "/api/settings":
                     row = self.backend().repository.connection.execute("PRAGMA database_list").fetchone()
                     self._send_json({"database_path": row[2], "operator": "Isaac Wanlemvo", "version": "0.2.0"})
@@ -153,6 +160,12 @@ class NetOpsGuiServer:
                 payload = self._read_json()
 
                 parts = path.strip("/").split("/")
+                if ((len(parts) == 4 and method == 'POST') or (len(parts) == 5 and method == 'PATCH')) and parts[:2] == ['api', 'people'] and parts[3] == 'sections':
+                    self._send_json(self.backend().casefile.save_section(unquote(parts[2]), payload, unquote(parts[4]) if len(parts) == 5 else None))
+                    return
+                if len(parts) == 4 and parts[:2] == ['api', 'people'] and parts[3] == 'photo' and method == 'POST':
+                    self._send_json(self.backend().casefile.set_photo(unquote(parts[2]), payload))
+                    return
                 if len(parts) == 5 and parts[:2] == ["api", "follow-ups"] and parts[4] == "complete" and method == "POST":
                     self._send_json(self.backend().complete_follow_up(unquote(parts[2]), unquote(parts[3])))
                     return
@@ -233,6 +246,8 @@ class NetOpsGuiServer:
 
             def _read_json(self) -> JsonDict:
                 length = int(self.headers.get("Content-Length", "0"))
+                if length < 0 or length > 12 * 1024 * 1024:
+                    raise ValueError('Request body is too large.')
                 if not length:
                     return {}
                 body = self.rfile.read(length).decode("utf-8")

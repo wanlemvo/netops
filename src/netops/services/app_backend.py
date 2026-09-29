@@ -16,6 +16,7 @@ from netops.domain.validation import NotFoundError, UserInputError
 from netops.services.interactions import InteractionService
 from netops.services.open_loops import OpenLoopService
 from netops.services.people import PeopleService
+from netops.services.casefile import CasefileService
 from netops.storage import NetOpsRepository, connect
 
 JsonDict = dict[str, Any]
@@ -67,6 +68,7 @@ class NetworkOpsBackend:
         self.people = PeopleService(self.repository)
         self.interactions = InteractionService(self.repository, self.people)
         self.loops = OpenLoopService(self.repository, self.people)
+        self.casefile = CasefileService(self.repository, self.people)
 
     def get_overview(self) -> JsonDict:
         people = self.repository.list_v1_people()
@@ -150,6 +152,7 @@ class NetworkOpsBackend:
 
         return {
             "view": "dossier",
+            "sections": self.casefile.sections(person.person_id),
             "follow_ups": [item for item in self.review_followups() if
                 (item["kind"] == "person" and item["id"] == person.person_id) or
                 (item["kind"] == "interaction" and item["id"] in {x["id"] for x in interactions}) or

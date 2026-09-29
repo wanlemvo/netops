@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 MIGRATIONS: list[tuple[int, str]] = [
@@ -354,6 +354,31 @@ BEGIN UPDATE interactions SET follow_up_completed_at = NULL WHERE id = NEW.id; E
 CREATE TRIGGER reopen_opportunity_follow_up AFTER UPDATE OF follow_up_date ON opportunities
 WHEN OLD.follow_up_date IS NOT NEW.follow_up_date
 BEGIN UPDATE opportunities SET follow_up_completed_at = NULL WHERE opportunity_id = NEW.opportunity_id; END;
+"""))
+
+
+MIGRATIONS.append((6, """
+CREATE TABLE dossier_sections (
+    section_id TEXT PRIMARY KEY,
+    person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    format TEXT NOT NULL DEFAULT 'plain',
+    revision INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_dossier_sections_person ON dossier_sections(person_id, created_at);
+CREATE TABLE dossier_revisions (
+    revision_id TEXT PRIMARY KEY,
+    section_id TEXT NOT NULL REFERENCES dossier_sections(section_id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    format TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    recorded_at TEXT NOT NULL,
+    UNIQUE(section_id, revision)
+);
 """))
 
 

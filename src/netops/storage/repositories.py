@@ -34,6 +34,7 @@ from netops.domain.models import (
 )
 from netops.domain.validation import NotFoundError, UserInputError, normalize_date_text, require_entity_type
 from netops.storage.migrations import migrate
+from netops.storage.casefile import CasefileRepository
 
 
 def _date_to_text(value: date | None) -> str | None:
@@ -73,7 +74,7 @@ def _tags_from_text(value: str | None) -> list[str]:
     return _list_from_text(value)
 
 
-class NetOpsRepository:
+class NetOpsRepository(CasefileRepository):
     def __init__(self, connection: sqlite3.Connection) -> None:
         self.connection = connection
         migrate(connection)

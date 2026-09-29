@@ -1,4 +1,6 @@
 # Tested Windows Python 3.12 build and verification environment.
+Pillow==12.3.0
+Pillow==12.3.0
 altgraph==0.17.5
 annotated-doc==0.0.5
 annotated-types==0.8.0

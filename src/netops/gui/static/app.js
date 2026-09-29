@@ -176,111 +176,33 @@ function renderDossier() {
     content.insertAdjacentHTML("afterbegin", backToPeople() + dossierTabs() + `<button class="primary-button" data-scope="profile" data-action="${action}">+ New ${title === "Timeline" ? "Interaction" : title === "Relationships" ? "Relationship" : title === "Opportunities" ? "Opportunity" : title}</button>`);
     return;
   }
-  const contacts = dossier.folder_payloads.contacts || [];
-  const interactions = dossier.folder_payloads.interactions || [];
-  const signals = dossier.folder_payloads.signals || [];
-  const opportunities = dossier.folder_payloads.opportunities || [];
-  const connections = dossier.folder_payloads.connections || [];
-  const status = dossier.summary_cards?.find((card) => card.id === "relationship_status")?.value;
-  const bestMove = dossier.summary_cards?.find((card) => card.id === "best_move")?.value;
-  const strength = person.relationship_strength || "unset";
-
-  content.innerHTML = `
-    ${backToPeople()}<div class="dossier-grid">
-      <div>
-        <div class="breadcrumb">People > ${escapeHtml(person.name)}</div>
-        <section class="profile-hero">
-          ${avatar(person, "avatar-large")}
-          <div class="hero-copy">
-            <h1>${escapeHtml(person.name)}</h1>
-            <h2>${escapeHtml(person.role || person.relationship_type || "Person")}</h2>
-            <div class="muted">${escapeHtml(person.organization || "NetworkOps")}</div>
-            <div class="chips">
-              <span class="chip">${escapeHtml(person.relationship_type || "person")}</span>
-              <span class="chip">${escapeHtml(person.relationship_status || status || "active")}</span>
-              <span class="chip">Strength: ${escapeHtml(strength)}</span>
-            </div>
-            <div class="stat-strip">
-              <div class="stat"><span>Last Contact</span><strong>${escapeHtml(person.last_contact || "unset")}</strong></div>
-              <div class="stat"><span>Next Action</span><strong>${escapeHtml(bestMove || person.next_action || "unset")}</strong></div>
-              <div class="stat"><span>Follow Up</span><strong>${escapeHtml(person.follow_up_date || "unset")}</strong></div>
-              <div class="stat"><span>Open Opportunities</span><strong>${opportunities.length}</strong></div>
-              <div class="stat"><span>Total Signals</span><strong>${signals.length}</strong></div>
-            </div>
-          </div>
-        </section>
-
-        ${dossierTabs()}
-        <button class="primary-button" data-action="edit">Edit Person</button>
-        <button class="primary-button" data-action="interaction">Log Interaction</button>
-        <section class="panel"><h3>Pending Follow-ups</h3>${(dossier.follow_ups || []).map(renderFollowUp).join("") || "No pending follow-ups."}</section>
-
-        <section class="panel">
-          <h3>Dossier</h3>
-          <p>${multiline(dossier.current_read)}</p>
-          <div class="two-col">
-            <div class="mini-section">
-              <h4>Current Goals</h4>
-              ${bullets(person.current_goals)}
-            </div>
-            <div class="mini-section">
-              <h4>Preferences</h4>
-              ${bullets(person.preferences)}
-            </div>
-            <div class="mini-section">
-              <h4>Communication Style</h4>
-              <p>${multiline(person.communication_style)}</p>
-            </div>
-            <div class="mini-section">
-              <h4>Potential Value</h4>
-              <div class="value-tags">${splitLines(person.potential_value).map((item) => `<span class="value-tag">${escapeHtml(item)}</span>`).join("") || `<span class="muted">unset</span>`}</div>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h3>Recent Interactions</h3>
-          <div class="timeline-list">
-            ${interactions.slice(0, 5).map(renderRecord).join("") || `<div class="empty">No interactions logged.</div>`}
-          </div>
-        </section>
-      </div>
-
-      <aside class="right-rail">
-        <div class="quote-card">
-          <blockquote>"${escapeHtml(person.importance_reason || "Only logged, shared, observed, or publicly known info.")}"</blockquote>
-        </div>
-        <section class="side-panel">
-          <h3>Connections</h3>
-          <div class="connection-map">
-            <div class="node-avatar center">${initials(person.name)}</div>
-            ${connections.slice(0, 4).map((link) => `<div class="node-avatar">${initials(link.other_entity_label)}</div>`).join("")}
-          </div>
-          <div class="side-list">${connections.map(renderRelationshipRecord).join("") || `<div class="empty">No links yet.</div>`}</div>
-        </section>
-        <section class="side-panel">
-          <h3>Open Opportunities</h3>
-          <div class="side-list">${opportunities.slice(0, 3).map(renderOpportunityRecord).join("") || `<div class="empty">No opportunities.</div>`}</div>
-        </section>
-        <section class="side-panel">
-          <h3>Quick Intel</h3>
-          <div class="side-list">${signals.slice(0, 3).map(renderSignalRecord).join("") || `<div class="empty">No signals.</div>`}</div>
-        </section>
-        <section class="side-panel">
-          <h3>Contact Information</h3>
-          <div class="side-list">${contacts.map((contact) => `
-            <div class="side-row">
-              <span class="index-dot">${escapeHtml((contact.type || "?").slice(0, 1))}</span>
-              <div>
-                <div class="card-title">${escapeHtml(contact.value)}</div>
-                <div class="muted">${escapeHtml(contact.label || contact.type)}</div>
-              </div>
-            </div>
-          `).join("") || `<div class="empty">No contact methods.</div>`}</div>
-        </section>
-      </aside>
-    </div>
-  `;
+  const folders = dossier.folder_payloads;
+  const action = (kind, label) => `<button class="action-link" data-action="${kind}">${label}</button>`;
+  const context = [["current_goals", "Goals"], ["interests", "Interests"], ["preferences", "Preferences"], ["communication_style", "Communication style"], ["potential_value", "Potential value"], ["importance_reason", "Why this connection matters"]];
+  content.innerHTML = `${backToPeople()}
+    <section class="profile-hero">${avatar(person, "avatar-large")}<div class="hero-copy">
+    <h1>${escapeHtml(person.name)}</h1><h2>${escapeHtml(person.role)}</h2><div class="muted">${escapeHtml(person.organization)} · ${escapeHtml(person.location)}</div>
+    <dl class="identity-indicators"><div><dt>Category</dt><dd>${escapeHtml(person.relationship_type || "Unset")}</dd></div><div><dt>Status</dt><dd>${escapeHtml(person.relationship_status || "Unset")}</dd></div><div><dt>Strength</dt><dd>${escapeHtml(person.relationship_strength || "Unset")}</dd></div></dl>
+    <div class="assigned-tags"><span class="muted">Tags</span> ${(person.tags || []).map(t=>`<span class="tag-chip">${escapeHtml(t)}</span>`).join("") || "None assigned"}</div>
+    </div><div class="hero-actions">${action("edit", "Edit Person")}${action("photo", "Change photo")}</div></section>
+    ${dossierTabs()}
+    <div class="casefile-columns"><div>
+      <section class="panel"><div class="section-heading"><h3>Identity</h3>${action("edit", "Edit identity")}</div><p>${escapeHtml(person.alias || "No alias recorded")}</p>
+      <div class="section-heading"><h4>Contacts</h4>${action("contact", "Add contact")}</div>${(folders.contacts || []).map(c=>`<p>${escapeHtml(c.type)} · ${escapeHtml(c.value)} ${escapeHtml(c.label)}</p>`).join("") || '<p class="muted">No contacts recorded.</p>'}</section>
+      <section class="panel"><div class="section-heading"><h3>Relationship context</h3>${action("relationship-context", "Edit context")}</div><p>${multiline(person.origin_story)}</p><p>First met: ${escapeHtml(person.first_met || "Unknown")}</p>
+      ${(folders.connections || []).map(renderRelationshipRecord).join("")}${action("relationship", "Add relationship")}</section>
+      <section class="panel"><div class="section-heading"><h3>Knowledge / current read</h3>${action("signal", "Add Intel")}</div>${(folders.signals || []).map(renderSignalRecord).join("") || '<p class="muted">No structured Intel recorded.</p>'}</section>
+      <section class="panel"><div class="section-heading"><h3>Case-file sections</h3><button class="action-link" data-section-action="add">Add section</button></div>
+      ${(dossier.sections || []).map(section=>`<article class="dossier-section" data-section-id="${section.section_id}"><div class="section-heading"><h4>${escapeHtml(section.title)}</h4><div>
+      <button class="action-link" data-section-action="edit" data-section="${section.section_id}">Edit</button>
+      <button class="action-link" data-section-action="append" data-section="${section.section_id}">Append</button>
+      ${section.revision ? `<button class="action-link" data-section-action="history" data-section="${section.section_id}">History</button>` : ""}</div></div><div class="document-body">${section.html}</div></article>`).join("") || '<p class="muted">Add background or context as individual sections.</p>'}</section>
+    </div><div>
+      <section class="panel"><h3>Current context</h3>${context.map(([key,label])=>`<div class="mini-section"><div class="section-heading"><h4>${label}</h4><button class="action-link" data-context="${key}" data-label="${label}">Edit</button></div><p>${multiline(person[key]) || '<span class="muted">Not recorded</span>'}</p></div>`).join("")}</section>
+      <section class="panel"><div class="section-heading"><h3>Open loops / follow-ups</h3>${action("follow-up", "Edit next action")}</div>${(dossier.follow_ups || []).map(renderFollowUp).join("") || '<p class="muted">No pending actions.</p>'}</section>
+      <section class="panel"><div class="section-heading"><h3>Recent history</h3>${action("interaction", "Log Interaction")}</div>${(folders.interactions || []).slice(0,5).map(renderRecord).join("") || '<p class="muted">No interactions recorded.</p>'}</section>
+      <section class="panel"><div class="section-heading"><h3>Opportunities</h3>${action("opportunity", "Add opportunity")}</div>${(folders.opportunities || []).map(renderOpportunityRecord).join("") || '<p class="muted">No opportunities recorded.</p>'}</section>
+    </div></div>`;
 }
 
 function renderCollection(title, items, renderer, action = "") {
@@ -406,11 +328,8 @@ function openModal(kind, scoped = false) {
         field("location", "Location", "text", false, selected?.location),
         field("relationship_status", "Relationship Status", "text", false, selected?.relationship_status),
         field("relationship_strength", "Relationship Strength", "text", false, selected?.relationship_strength),
-        field("dossier", "Dossier", "textarea", false, selected?.dossier),
-        field("communication_style", "Communication Style", "textarea", false, selected?.communication_style),
-        field("preferences", "Preferences", "textarea", false, selected?.preferences),
-        field("current_goals", "Current Goals", "textarea", false, selected?.current_goals),
-        field("potential_value", "Potential Value", "textarea", false, selected?.potential_value),
+        field("alias", "Alias", "text", false, selected?.alias),
+        field("tags", "Tags", "text", false, (selected?.tags || []).join(", ")),
         field("next_action", "Next Action", "text", false, selected?.next_action),
         field("follow_up_date", "Follow-Up Date", "text", false, selected?.follow_up_date),
       ],
@@ -475,7 +394,21 @@ function openModal(kind, scoped = false) {
       ],
     },
   };
-  const config = forms[kind] || forms.person;
+  forms["relationship-context"] = {title:"Edit relationship context", endpoint:`/api/people/${selectedOption}`, method:"PATCH", fields:[
+    field("origin_story", "How we know each other", "textarea", false, selected?.origin_story),
+    field("first_met", "First met", "text", false, selected?.first_met),
+    field("relationship_type", "Category", "text", false, selected?.relationship_type),
+    field("relationship_status", "Relationship Status", "text", false, selected?.relationship_status),
+    field("relationship_strength", "Relationship Strength", "text", false, selected?.relationship_strength)]};
+  forms["follow-up"] = {title:"Edit next action", endpoint:`/api/people/${selectedOption}`, method:"PATCH", fields:[
+    field("next_action", "Next Action", "textarea", false, selected?.next_action), field("follow_up_date", "Follow-Up Date", "text", false, selected?.follow_up_date)]};
+  forms.photo = {title:"Profile photo", endpoint:`/api/people/${selectedOption}/photo`, method:"POST", fields:[
+    '<div class="field full"><label for="photo-file">Choose a still PNG, JPEG or WebP (up to 8 MB)</label><input id="photo-file" type="file" accept="image/png,image/jpeg,image/webp"><img id="photo-preview" class="photo-preview" alt="Selected photo preview" hidden></div>',
+    '<label class="field"><span><input type="checkbox" name="remove"> Remove current photo</span></label>']};
+  showForm(forms[kind] || forms.person, kind);
+}
+function showForm(config, kind) {
+  modalForm.dataset.photoData = "";
   modalTitle.textContent = config.title;
   modalForm.dataset.endpoint = config.endpoint;
   modalForm.dataset.method = config.method;
@@ -547,6 +480,7 @@ modalForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (saving) return;
   const payload = Object.fromEntries(new FormData(modalForm).entries());
+  if (modalForm.dataset.photoData) payload.data = modalForm.dataset.photoData;
   if (payload.person_id) { payload.people = [payload.person_id]; delete payload.person_id; }
   const endpoint = modalForm.dataset.endpoint.replace("__subject__", encodeURIComponent(payload.subject_id || ""));
   const method = modalForm.dataset.method;
@@ -579,6 +513,12 @@ document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button || button.disabled) return;
   try {
+    if (button.dataset.sectionAction) { await openSection(button.dataset.sectionAction, button.dataset.section); return; }
+    if (button.dataset.context) {
+      const key = button.dataset.context;
+      showForm({title:`Edit ${button.dataset.label}`, endpoint:`/api/people/${state.selectedPersonId}`, method:"PATCH",
+        fields:[field(key,button.dataset.label,"textarea",false,state.selectedDossier.person[key])]}, "context"); return;
+    }
     if (button.id === "nav-toggle") { setNavigation(!document.body.classList.contains("nav-collapsed")); return; }
     if (button.id === "new-toggle") { const menu = document.querySelector("#new-menu"); menu.classList.toggle("hidden"); button.setAttribute("aria-expanded", String(!menu.classList.contains("hidden"))); return; }
     if (button.id === "modal-close" || button.id === "form-cancel") { if (!saving) closeModal(); return; }
@@ -633,4 +573,28 @@ document.querySelector(".brand").addEventListener("click", event => { event.prev
 
 load().catch((error) => {
   content.innerHTML = `<div class="empty">NetworkOps could not load: ${escapeHtml(error.message)}</div>`;
+});
+async function openSection(action, id) {
+  const section = (state.selectedDossier.sections || []).find(s=>s.section_id === id);
+  const endpoint = `/api/people/${state.selectedPersonId}/sections${id ? "/" + id : ""}`;
+  if (action === "history") {
+    const rows = await api(endpoint + "/history");
+    showForm({title:"Section history", endpoint:"", method:"GET", fields:rows.map(r=>`<article class="field full document-body"><h4>${escapeHtml(r.title)}</h4><div class="muted">Preserved before ${escapeHtml(r.recorded_at)}</div>${r.html}</article>`)}, "history");
+    modalForm.querySelector('[type="submit"]').remove(); return;
+  }
+  const node = document.createElement("div"); node.innerHTML = section?.html || "";
+  document.body.append(node); const plain = node.innerText; node.remove();
+  showForm({title:action === "add" ? "Add section" : action === "append" ? "Append to section" : "Edit section", endpoint, method:id ? "PATCH" : "POST", fields:[
+    field("title","Section title","text",true,section?.title),
+    field("body",action === "append" ? "Addition" : "Section text","textarea",true,action === "edit" ? plain : ""),
+    `<input type="hidden" name="revision" value="${section?.revision || 0}">${action === "append" ? '<input type="hidden" name="append" value="1">' : ""}`,
+    '<p class="muted field full">Write ordinary prose. Edits save plain text; previous content and formatting remain available in section history.</p>'
+  ]}, "section");
+}
+modalForm.addEventListener("change", event=>{
+  if (event.target.id !== "photo-file") return;
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => { modalForm.dataset.photoData = String(reader.result).split(",")[1]; const preview = document.querySelector("#photo-preview"); preview.src = reader.result; preview.hidden = false; };
+  reader.readAsDataURL(file);
 });

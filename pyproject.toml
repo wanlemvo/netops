@@ -9,6 +9,10 @@ description = "Local-first relationship operations desktop application"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "markdown-it-py>=4,<5",
+    "Pillow>=11,<13",
+    "markdown-it-py>=4,<5",
+    "Pillow>=11,<13",
     "pydantic>=2.0",
     "prompt_toolkit>=3.0",
     "rich>=13.0",
