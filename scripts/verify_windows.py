@@ -1,5 +1,6 @@
 """Native Windows launch/persistence smoke check using copied binaries and fictional data."""
 import argparse
+import base64
 import ctypes
 from ctypes import wintypes
 import json
@@ -79,9 +80,19 @@ def launch_check(root, expected_id=None):
         if expected_id is None:
             result = request(url + 'api/people', {'name': 'Native Window Fiction', 'dossier': 'Saved through the packaged application.'})
             expected_id = result['person_id']
+            from io import BytesIO
+            from PIL import Image
+            pixels = BytesIO()
+            Image.new('RGB', (20, 30), 'blue').save(pixels, 'PNG')
+            request(url + f'api/people/{expected_id}/photo', {'data': base64.b64encode(pixels.getvalue()).decode()})
         record = request(url + f'api/people/{expected_id}')
         assert record['dossier'] == 'Saved through the packaged application.'
+        assert not Path(record['profile_photo_path']).is_absolute()
+        with urllib.request.urlopen(url + f'api/people/{expected_id}/profile-photo') as response:
+            assert response.headers['Content-Type'] == 'image/jpeg'
+            assert response.read().startswith(b'\xff\xd8')
         result = {'visible_native_window': True, 'rendered_controls_verified': True, 'database_path': settings['database_path'],
+                  'portable_photo_verified': True,
                   'persistent_record_verified': True, 'interaction_surface': 'Native launch plus HTTP API; GUI clicks verified separately in browser tests.'}
         print(json.dumps(result), flush=True)
         return expected_id, result

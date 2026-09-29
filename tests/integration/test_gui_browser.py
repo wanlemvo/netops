@@ -30,12 +30,16 @@ def test_complete_gui_workflow(tmp_path):
             page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(server.url)
             expect(page.locator('#people-list')).to_have_count(0)
+            expect(page.get_by_role('heading',name='People Files',exact=True)).to_be_visible()
+            page.screenshot(path=str(output / 'dashboard.png'), full_page=True)
             page.locator('[data-view="people"]').click()
             expect(page.locator('#people-list .person-row')).to_have_count(2)
-            page.screenshot(path=str(output / 'dashboard.png'), full_page=True)
+            page.screenshot(path=str(output / 'people.png'), full_page=True)
             page.get_by_role('button', name='Avery Chen', exact=False).click()
             expect(page.get_by_role('heading', name='Avery Chen', exact=True)).to_be_visible()
             page.screenshot(path=str(output / 'dossier.png'), full_page=True)
+            page.get_by_role('heading',name='Case-file sections',exact=True).scroll_into_view_if_needed()
+            page.screenshot(path=str(output / 'dossier-sections.png'), full_page=True)
 
             # Filtered creation must open the new person, independent of alphabetical order.
             page.get_by_role('button', name='Back to People', exact=False).click()

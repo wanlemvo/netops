@@ -369,6 +369,7 @@ class NetworkOpsBackend:
             signals = self.repository.list_signals(person.person_id)[:3]
             items.extend(self._interaction_item(interaction, person=person) for interaction in interactions)
             items.extend(self._signal_item(signal, person=person) for signal in signals)
+        items = list({(item['kind'], item['id']): item for item in items}.values())
         items.sort(key=lambda item: item.get("sort_date") or "", reverse=True)
         return items
 
