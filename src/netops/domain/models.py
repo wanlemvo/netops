@@ -317,6 +317,9 @@ class RelationshipLink(NetOpsModel):
     target_entity_id: str
     relationship_type: str
     description: str | None = None
+    started_on: str | None = None
+    ended_on: str | None = None
+    revision: int = 1
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
     archived_at: str | None = None

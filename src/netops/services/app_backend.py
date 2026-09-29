@@ -18,6 +18,7 @@ from netops.services.open_loops import OpenLoopService
 from netops.services.people import PeopleService
 from netops.services.casefile import CasefileService
 from netops.services.intelligence import IntelligenceService
+from netops.services.relationships import RelationshipService
 from netops.storage import NetOpsRepository, connect
 
 JsonDict = dict[str, Any]
@@ -71,6 +72,7 @@ class NetworkOpsBackend:
         self.loops = OpenLoopService(self.repository, self.people)
         self.casefile = CasefileService(self.repository, self.people)
         self.intelligence = IntelligenceService(self.repository, self.people)
+        self.relationships = RelationshipService(self.repository, self.people)
 
     def get_overview(self) -> JsonDict:
         people = self.repository.list_v1_people()
@@ -314,16 +316,12 @@ class NetworkOpsBackend:
         return self._opportunity_item(opportunity, person=primary_person)
 
     def add_relationship_link(self, payload: JsonDict) -> JsonDict:
-        source = str(payload.get("source_person_id") or payload.get("source") or "")
-        target = str(payload.get("target_person_id") or payload.get("target") or "")
-        link = self.people.add_relationship_link(
-            source,
-            target,
-            relationship_type=self.repository.save_type("relationship", payload.get("relationship_type") or payload.get("type") or "")["label"],
-            description=payload.get("description"),
-        )
-        source_person = self.people.resolve_person(source)
-        return self._relationship_link_item(link, focus_person_id=source_person.id)
+        link = self.relationships.save(payload)
+        return self._relationship_link_item(link, focus_person_id=link.source_entity_id)
+
+    def update_relationship(self, link_id: str, payload: JsonDict) -> JsonDict:
+        link = self.relationships.save(payload, link_id)
+        return self._relationship_link_item(link, focus_person_id=link.source_entity_id)
 
     def review_followups(self) -> list[JsonDict]:
         return [dict(row) for row in self.loops.review_v1_follow_ups()]
@@ -472,6 +470,12 @@ class NetworkOpsBackend:
             "target_entity_type": link.target_entity_type,
             "target_entity_id": link.target_entity_id,
             "relationship_type": link.relationship_type,
+            "source_label": self._entity_label(link.source_entity_type, link.source_entity_id),
+            "target_label": self._entity_label(link.target_entity_type, link.target_entity_id),
+            "started_on": link.started_on,
+            "ended_on": link.ended_on,
+            "status": "Ended" if link.ended_on else "Active",
+            "revision": link.revision,
             "description": link.description,
             "other_entity_type": other_type,
             "other_entity_id": other_id,

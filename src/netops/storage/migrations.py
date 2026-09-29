@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 
 MIGRATIONS: list[tuple[int, str]] = [
@@ -408,6 +408,21 @@ CREATE TABLE intel_revisions (
     snapshot TEXT NOT NULL,
     recorded_at TEXT NOT NULL,
     UNIQUE(signal_id, revision)
+);
+"""))
+
+
+MIGRATIONS.append((9, """
+ALTER TABLE relationship_links ADD COLUMN started_on TEXT;
+ALTER TABLE relationship_links ADD COLUMN ended_on TEXT;
+ALTER TABLE relationship_links ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE relationship_revisions (
+    revision_id TEXT PRIMARY KEY,
+    relationship_link_id TEXT NOT NULL REFERENCES relationship_links(relationship_link_id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    snapshot TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    UNIQUE(relationship_link_id, revision)
 );
 """))
 

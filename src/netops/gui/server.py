@@ -130,6 +130,9 @@ class NetOpsGuiServer:
                 if path.startswith('/api/intel/') and path.endswith('/history'):
                     self._send_json(self.backend().intelligence.history(_path_part(path, 2)))
                     return
+                if path.startswith('/api/relationships/') and path.endswith('/history'):
+                    self._send_json(self.backend().relationships.history(_path_part(path, 2)))
+                    return
                 if path == "/api/overview":
                     self._send_json(self.backend().get_overview())
                     return
@@ -166,6 +169,9 @@ class NetOpsGuiServer:
                 payload = self._read_json()
                 if method == 'PATCH' and path.startswith('/api/intel/'):
                     self._send_json(self.backend().update_intel(_path_part(path, 2), payload))
+                    return
+                if method == 'PATCH' and path.startswith('/api/relationships/'):
+                    self._send_json(self.backend().update_relationship(_path_part(path, 2), payload))
                     return
                 if method == 'POST' and path == '/api/tags':
                     self._send_json(self.backend().repository.save_catalog_tag(payload.get('name')))

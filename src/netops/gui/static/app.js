@@ -264,15 +264,13 @@ function renderOpportunityRecord(item, index = 0) {
 }
 
 function renderRelationshipRecord(item) {
-  return `
-    <div class="side-row">
-      <span class="index-dot">+</span>
-      <div>
-        <div class="card-title">${escapeHtml(item.other_entity_label || item.target_entity_id)}</div>
-        <div class="muted">${escapeHtml(item.relationship_type || item.description || "relationship")}</div>
-      </div>
-    </div>
-  `;
+  const people = [item.source_entity_id,item.target_entity_id].map(id=>state.people.find(p=>p.person_id === id)).filter(Boolean);
+  return `<article class="record-row relationship-record" data-relationship-id="${item.id}"><div><div class="participant-avatars">${people.map(p=>avatar(p)).join("")}<strong>${escapeHtml(item.source_label)} → ${escapeHtml(item.target_label || item.other_entity_label)}</strong></div>
+    <div class="card-title">${escapeHtml(item.relationship_type)} · ${escapeHtml(item.status || "Active")}</div>
+    <p class="muted">Started: ${escapeHtml(item.started_on || "Unknown")} · Ended: ${escapeHtml(item.ended_on || "Ongoing")}</p><p>${multiline(item.description)}</p>
+    <button class="action-link" data-edit-relationship="${item.id}">Edit relationship</button>
+    ${!item.ended_on ? `<button class="action-link" data-end-relationship="${item.id}">End this type</button>` : ""}
+    ${item.revision > 1 ? `<button class="action-link" data-relationship-history="${item.id}">History</button>` : ""}</div></article>`;
 }
 
 function bullets(value) {
@@ -288,7 +286,8 @@ function splitLines(value) {
     .filter(Boolean);
 }
 
-function openModal(kind, scoped = false) {
+async function openModal(kind, scoped = false) {
+  if (!state.workspace) await load();
   const selected = scoped ? state.selectedDossier?.person : null;
   const peopleOptions = state.people.map((person) => `<option value="${person.person_id}">${escapeHtml(person.name)}</option>`).join("");
   const selectedOption = selected?.person_id || "";
@@ -373,7 +372,7 @@ function openModal(kind, scoped = false) {
       ],
     },
     relationship: {
-      title: "Add Relationship Link",
+      title: "New Relationship",
       endpoint: "/api/relationship-links",
       method: "POST",
       fields: [
@@ -381,6 +380,8 @@ function openModal(kind, scoped = false) {
         select("target_person_id", "Target Person", state.people.map((person) => [person.person_id, person.name]), ""),
         typePicker("relationship", "relationship_type", "Relationship Type"),
         field("description", "Description", "textarea"),
+        field("started_on", "Started (YYYY-MM or YYYY-MM-DD)", "text", false, localToday()),
+        field("ended_on", "Ended (optional)", "text"),
       ],
     },
   };
@@ -507,6 +508,20 @@ document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button || button.disabled) return;
   try {
+    if (button.dataset.editRelationship || button.dataset.endRelationship) {
+      const item = state.workspace.relationships.find(r=>r.id === (button.dataset.editRelationship || button.dataset.endRelationship));
+      showForm({title:button.dataset.endRelationship ? "End " + item.relationship_type : "Edit relationship", endpoint:"/api/relationships/" + item.id, method:"PATCH", fields:[
+        `<p class="field full">${escapeHtml(item.source_label)} → ${escapeHtml(item.target_label)} · ${escapeHtml(item.relationship_type)}</p><input type="hidden" name="revision" value="${item.revision}">`,
+        field("started_on","Started (YYYY-MM or YYYY-MM-DD)","text",false,item.started_on),
+        field("ended_on","Ended (optional)","text",Boolean(button.dataset.endRelationship),button.dataset.endRelationship ? localToday() : item.ended_on),
+        field("description","Description","textarea",false,item.description),
+        '<p class="muted field full">Each type has its own history. To restart an ended type, add a new relationship.</p>'
+      ]},"relationship-edit"); return;
+    }
+    if (button.dataset.relationshipHistory) {
+      const rows = await api("/api/relationships/" + button.dataset.relationshipHistory + "/history");
+      showForm({title:"Relationship history",endpoint:"",method:"GET",fields:rows.map(r=>`<article class="field full"><h4>${escapeHtml(r.relationship_type)}</h4><p>${escapeHtml(r.started_on || "Unknown start")} → ${escapeHtml(r.ended_on || "Active")}</p><p>${multiline(r.description)}</p></article>`)}, "history"); modalForm.querySelector('[type="submit"]').remove(); return;
+    }
     if (button.dataset.editIntel) {
       const item = state.workspace.signals.find(x=>x.id === button.dataset.editIntel);
       showForm({title:"Edit Intel", endpoint:"/api/intel/" + item.id, method:"PATCH", fields:intelFields(item, item.person_id)}, "signal"); return;
@@ -556,7 +571,7 @@ document.addEventListener("click", async (event) => {
       render();
     } else if (button.dataset.action) {
       const scoped = button.dataset.scope === "profile" || (state.activeView === "people" && state.peopleMode === "profile" && content.contains(button));
-      openModal(button.dataset.action, scoped);
+      await openModal(button.dataset.action, scoped);
       document.querySelector("#new-menu").classList.add("hidden");
       document.querySelector("#new-toggle").setAttribute("aria-expanded", "false");
     } else if (button.dataset.complete) {
