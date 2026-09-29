@@ -7,8 +7,11 @@ Built for one operator who wants their records in a portable SQLite database rat
 
 ## What works
 
-Create and search people, edit multiline dossiers, record interactions, browse contact methods,
-signals, opportunities and relationship links, and complete follow-ups. Changes persist across restarts.
+Open a standalone People directory and read each person's case file in the full content area.
+Edit or append individual dossier sections, view earlier revisions, manage photos and reusable tags,
+record multi-person interactions, capture typed Intel with provenance, and track independently dated
+relationship types. Timeline derives history from those records and follow-up completions.
+Opportunities and contacts remain available within profiles. Changes persist across restarts.
 The desktop GUI uses pywebview and Edge WebView2. Existing CLI/TUI commands remain secondary interfaces.
 
 ## Start from source (Windows)
@@ -69,8 +72,8 @@ No automatic synchronization, database merging, or encryption is provided.
 
 ## Limits and project notes
 
-Tags management, Analytics and Map View are disabled placeholders. The GUI displays profile photos;
-photo management remains available through the CLI. This is a local single-user application, not a
+Network Map is a disabled future destination; Analytics is absent. Tags, photo management, Intel
+and relationship history work in the GUI. This is a local single-user application, not a
 hosted service. Do not expose its HTTP server on a network. No AI capability or production-readiness
 claim is made. No project license has been selected; resolve licensing before public distribution.
 
@@ -79,3 +82,5 @@ claim is made. No project license has been selected; resolve licensing before pu
 [Release notes](docs/release-notes.md)
 
 [Repository and packaging decisions](docs/repository-guidance.md)
+
+[Current case-file iteration and verification](docs/casefile-iteration.md)

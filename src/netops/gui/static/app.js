@@ -174,7 +174,7 @@ function renderDossier() {
       contacts: ["Contact", "contact", (x) => `<div class="record-row">${escapeHtml(x.type)}: ${escapeHtml(x.value)}</div>`],
     };
     const [title, action, renderer] = tabs[state.dossierTab];
-    renderCollection(`${person.name} / ${title}`, dossier.folder_payloads[state.dossierTab] || [], renderer);
+    renderCollection(`${person.name} / ${title}`, (state.dossierTab === "interactions" ? dossier.timeline : dossier.folder_payloads[state.dossierTab]) || [], renderer);
     content.insertAdjacentHTML("afterbegin", backToPeople() + dossierTabs() + `<button class="primary-button" data-scope="profile" data-action="${action}">+ New ${title === "Timeline" ? "Interaction" : title === "Relationships" ? "Relationship" : title === "Opportunities" ? "Opportunity" : title}</button>`);
     return;
   }
@@ -202,7 +202,7 @@ function renderDossier() {
     </div><div>
       <section class="panel"><h3>Current context</h3>${context.map(([key,label])=>`<div class="mini-section"><div class="section-heading"><h4>${label}</h4><button class="action-link" data-context="${key}" data-label="${label}">Edit</button></div><p>${multiline(person[key]) || '<span class="muted">Not recorded</span>'}</p></div>`).join("")}</section>
       <section class="panel"><div class="section-heading"><h3>Open loops / follow-ups</h3>${action("follow-up", "Edit next action")}</div>${(dossier.follow_ups || []).map(renderFollowUp).join("") || '<p class="muted">No pending actions.</p>'}</section>
-      <section class="panel"><div class="section-heading"><h3>Recent history</h3>${action("interaction", "Log Interaction")}</div>${(folders.interactions || []).slice(0,5).map(renderRecord).join("") || '<p class="muted">No interactions recorded.</p>'}</section>
+      <section class="panel"><div class="section-heading"><h3>Recent history</h3>${action("interaction", "Log Interaction")}</div>${(dossier.timeline || []).slice(0,5).map(renderRecord).join("") || '<p class="muted">No interactions recorded.</p>'}</section>
       <section class="panel"><div class="section-heading"><h3>Opportunities</h3>${action("opportunity", "Add opportunity")}</div>${(folders.opportunities || []).map(renderOpportunityRecord).join("") || '<p class="muted">No opportunities recorded.</p>'}</section>
     </div></div>`;
 }
@@ -229,12 +229,14 @@ function renderPlaceholder() {
 function renderRecord(item) {
   return `
     <div class="record-row">
-      <div class="date-block"><strong>${escapeHtml((item.date || "--").slice(-2) || "--")}</strong>${escapeHtml(item.date || "undated")}</div>
+      <div class="date-block">${escapeHtml(item.date || "Undated")}<div class="muted">${escapeHtml(item.date_basis || "Event")}</div></div>
       <div>
         <div class="card-title">${escapeHtml(item.title || item.kind || "Record")}</div>
         <p>${multiline(item.summary || item.text || item.takeaways || "No summary recorded.")}</p>
+        ${item.kind === "interaction" && item.takeaways ? `<p><strong>Takeaways</strong><br>${multiline(item.takeaways)}</p>` : ""}
+        ${item.kind === "interaction" && item.action_items ? `<p><strong>Action items</strong><br>${multiline(item.action_items)}</p>` : ""}
         ${(item.participants || []).length ? `<div class="participant-avatars">${item.participants.map(p=>avatar(p) + `<span>${escapeHtml(p.name)}</span>`).join("")}</div>` : ""}
-        ${item.follow_up_completed_at ? `<div class="muted">Follow-up completed</div>` : item.follow_up_required ? completeButton(item) : ""}
+        ${item.follow_up_completed_at ? `<div class="muted">Follow-up completed</div>` : item.follow_up_required ? completeButton(item) : ""}${item.kind === "interaction" ? rescheduleButton(item) : ""}
       </div>
       <span class="risk-badge">${escapeHtml(item.person || item.kind || "intel")}</span>
     </div>
@@ -256,7 +258,7 @@ function renderOpportunityRecord(item, index = 0) {
       <div>
         <div class="card-title">${escapeHtml(item.title)}</div>
         <div class="muted">${escapeHtml(item.follow_up_date ? `Follow up by ${item.follow_up_date}` : item.description || "Opportunity")}</div>
-        ${item.follow_up_completed_at ? `<div class="muted">Follow-up completed</div>` : item.follow_up_date && !["closed", "complete", "completed", "archived"].includes(item.status) ? completeButton(item) : ""}
+        ${item.follow_up_completed_at ? `<div class="muted">Follow-up completed</div>` : item.follow_up_date && !["closed", "complete", "completed", "archived"].includes(item.status) ? completeButton(item) : ""}${rescheduleButton(item)}
       </div>
       <span class="risk-badge">${escapeHtml(item.status || "open")}</span>
     </div>
@@ -465,7 +467,7 @@ function completeButton(item) {
   return `<button class="action-link" data-complete="${escapeHtml(item.id)}" data-kind="${escapeHtml(item.kind)}">Complete follow-up</button>`;
 }
 function renderFollowUp(item) {
-  return `<div class="record-row follow-up-row"><div>${escapeHtml(item.action || item.title)}<div class="muted">${escapeHtml(item.follow_up_date || "Unscheduled")}</div></div>${completeButton(item)}</div>`;
+  return `<div class="record-row follow-up-row"><div>${escapeHtml(item.action || item.title)}<div class="muted">${escapeHtml(item.follow_up_date || "Unscheduled")}</div></div>${completeButton(item)}${rescheduleButton(item)}</div>`;
 }
 modalForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -508,6 +510,12 @@ document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button || button.disabled) return;
   try {
+    if (button.dataset.reschedule) {
+      showForm({title:"Schedule follow-up",endpoint:`/api/follow-ups/${button.dataset.kind}/${button.dataset.reschedule}`,method:"PATCH",fields:[
+        field("follow_up_date","Follow-Up Date","date",false,button.dataset.date),
+        '<p class="muted field full">Changing the schedule reopens this follow-up. Previous completions remain in Timeline.</p>'
+      ]},"schedule"); return;
+    }
     if (button.dataset.editRelationship || button.dataset.endRelationship) {
       const item = state.workspace.relationships.find(r=>r.id === (button.dataset.editRelationship || button.dataset.endRelationship));
       showForm({title:button.dataset.endRelationship ? "End " + item.relationship_type : "Edit relationship", endpoint:"/api/relationships/" + item.id, method:"PATCH", fields:[
@@ -665,3 +673,4 @@ function intelFields(item, personId) {
     field("creator","Creator","text",false,item ? item.creator : "Isaac Wanlemvo")
   ];
 }
+function rescheduleButton(item) { return `<button class="action-link" data-reschedule="${escapeHtml(item.id)}" data-kind="${escapeHtml(item.kind)}" data-date="${escapeHtml(item.follow_up_date)}">Schedule follow-up</button>`; }

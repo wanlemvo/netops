@@ -9,9 +9,9 @@
 
 ## Later, after the core workflow
 
-- GUI profile-photo import and richer contact editing.
-- Dedicated tag management and accessibility refinements.
-- Better rescheduling controls and optional follow-up reminders.
-- Evaluate analytics only against a defined user need.
+- Richer contact editing and accessibility refinements.
+- Advanced tag rename/archive/merge management.
+- Optional follow-up reminders.
+- Network Map, when its interaction requirements are defined.
 
 AI, graph visualization, cloud sync and external assistant integrations are outside this release.

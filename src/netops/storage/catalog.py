@@ -79,6 +79,10 @@ class CatalogRepository:
             return ensure_tag(self.connection, label)
 
     def list_catalog_tags(self):
+        cache_key = (self.connection.total_changes, self.connection.execute('PRAGMA data_version').fetchone()[0])
+        cached = getattr(self, '_tag_catalog_cache', None)
+        if cached and cached[0] == cache_key:
+            return cached[1]
         result = []
         for group in tag_groups(self.connection).values():
             if all(row['archived_at'] for row in group):
@@ -86,7 +90,9 @@ class CatalogRepository:
             ids = [row['tag_id'] for row in group]
             people = [r[0] for r in self.connection.execute(f"SELECT DISTINCT g.entity_id FROM taggings g JOIN people p ON p.id=g.entity_id WHERE g.entity_type='person' AND p.archived_at IS NULL AND g.tag_id IN ({','.join('?' for _ in ids)})", ids)]
             result.append({**group[0], 'people': people, 'usage': len(people)})
-        return sorted(result, key=lambda r: normalized(r['name']))
+        result = sorted(result, key=lambda r: normalized(r['name']))
+        self._tag_catalog_cache = (cache_key, result)
+        return result
 
     def person_tag_names(self, person_id):
         return [tag['name'] for tag in self.list_catalog_tags() if person_id in tag['people']]

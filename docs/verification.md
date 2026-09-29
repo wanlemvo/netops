@@ -1,5 +1,16 @@
 # Verification — 28 September 2026
 
+## Current case-file iteration
+
+The new iteration is documented in [casefile-iteration.md](casefile-iteration.md).
+Source tests pass with isolated fictional data, including real Edge browser workflows for the new
+sections, photos, tags, participants, Intel and relationship episodes. Final package and native
+candidate verification results will be recorded when the clean build is completed.
+
+## Original reconciliation evidence (earlier build)
+
+The results below describe the earlier executable, not the current case-file candidate.
+
 | Check | Executed result |
 |---|---|
 | Clean checkout + installed wheel | **111 tests passed**, including the real browser workflow; no source-tree import shortcut (`-o pythonpath=`) |

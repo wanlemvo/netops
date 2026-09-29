@@ -22,3 +22,15 @@ entire old backup into the old installation; an older executable is not a migrat
 The release builder never reads or copies personal data. Fictional demo creation is explicit and
 refuses an existing destination. Backups and local databases are ignored by Git, but still need
 normal access controls and your own off-device backup. SQLite contents are not encrypted.
+# Case-file iteration upgrades
+
+Schema upgrades are forward migrations. Before opening existing data in a newer build, close NetOps,
+take a consistent SQLite backup, and preserve the adjacent `assets` directory. Keep the old executable
+and its matching database backup together. To roll back, restore that pair into a separate folder;
+do not use an older executable to edit an upgraded database.
+
+This iteration's development and release checks use fictional databases. The working flash-drive
+installation is not upgraded by building or testing the candidate. Section revisions retain original
+text; Intel retains original IDs and unknown provenance; relationship episodes retain earlier dates;
+completion history survives reopening an action. Previous photo files are retained when replaced or
+removed from a profile, so backups should include the entire asset directory.

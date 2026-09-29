@@ -18,10 +18,10 @@ $loaded = $false
 do {
     $elements = $target.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
     $names = @($elements | ForEach-Object { $_.Current.Name })
-    $loaded = ($names -contains 'Dashboard') -and ($names -contains 'Add Person')
+    $loaded = ($names -contains 'Dashboard') -and ($names -contains 'People') -and ($names -contains 'Intel')
     if (-not $loaded) { Start-Sleep -Milliseconds 250 }
 } until ($loaded -or [DateTime]::UtcNow -gt $deadline)
-if (-not $loaded) { throw 'Native window did not expose the rendered Dashboard and Add Person controls.' }
+if (-not $loaded) { throw 'Native window did not expose the rendered Dashboard, People and Intel navigation.' }
 $rect = New-Object NativeCapture+RECT
 [void][NativeCapture]::GetWindowRect([IntPtr]$WindowHandle, [ref]$rect)
 $bitmap = New-Object System.Drawing.Bitmap(($rect.Right-$rect.Left),($rect.Bottom-$rect.Top))
@@ -33,4 +33,4 @@ try {
     if (-not $captured) { throw 'Native window capture failed.' }
     $bitmap.Save($Output, [System.Drawing.Imaging.ImageFormat]::Png)
 } finally { $bitmap.Dispose() }
-Write-Output 'Native WebView2 Dashboard and Add Person controls are rendered.'
+Write-Output 'Native WebView2 Dashboard, People and Intel controls are rendered.'

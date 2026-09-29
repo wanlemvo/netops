@@ -1,23 +1,27 @@
-# Feature and workflow inventory
+# Current feature and workflow inventory
 
-Status refers to the reconciled application. Browser tests exercise actual rendered controls;
-API tests alone do not establish that a desktop window works.
+Evidence refers to the case-file iteration. Browser controls are exercised in Microsoft Edge;
+native packaging and desktop rendering are checked separately.
 
-| Workflow | Reference finding | Reconciled behavior | Evidence |
-|---|---|---|---|
-| Find/add/open person | New person was not selected; filtered state could obscure it | Search by identity/context; new record opens and filter clears | Browser workflow; backend tests |
-| Edit dossier | Edit form existed without launch button | Visible Edit Person; atomic save; invalid input retains draft | Browser invalid-date test; rollback tests |
-| Browse dossier records | Dynamic tab buttons lacked handlers and represented Add actions | Persistent event delegation; record tabs and separate Add buttons | Browser workflow |
-| Log interaction | Date did not set required flag | Date implies follow-up; optional checkbox supports unscheduled follow-up | Service and browser tests |
-| Review/complete follow-up | Dashboard query omitted interactions; no completion API | Person, interaction and opportunity follow-ups; durable completion and rescheduling | Migration, lifecycle and browser tests |
-| Contact methods | Backend existed | Add and retrieve through Contact tab | Browser and API tests |
-| Signals/opportunities/links | Backend existed, dossier controls incomplete | Add and retrieve through dedicated dossier tabs | Browser and contract tests |
-| Profile photos | Absolute asset references could break after moving | New copies use relative references; legacy filename fallback | Copied-folder API test; CLI retained |
-| Portable storage | Required outer folder name `netops` | Marker and existing sibling-data discovery; ambiguity errors | Path tests; distribution checks |
-| Tags | Stored tags/filtering existed; dedicated page placeholder | Existing tags retained; dedicated page disabled | Code inspection and backend tests |
-| Analytics/Map View | Placeholders | Disabled and marked planned | Browser/source inspection |
-| Encryption/sync/clearance | Decorative claims | Accurate local SQLite/no-cloud description | Rendered screenshot |
-| CLI/TUI/raw notes | Earlier functionality | Retained as secondary interfaces and legacy data | Existing regression suite |
+| Workflow | Current GUI / backend | Evidence |
+|---|---|---|
+| Navigation | Collapsible persistent nav, full People directory/profile, global + New | Browser: retained tabs/drafts, no reload on collapse, saved preference |
+| Person creation/search | Duplicate names retain IDs; filtered creation opens new record | Backend and browser |
+| Dossier reading/editing | Safe Markdown reading; section Edit/Add/Append; preserved history | Rendering, conflict, revision and browser tests |
+| Current context | Separate ordinary forms for goals, interests, preferences and communication | Backend validation; browser section controls |
+| Photos | PNG/JPEG/WebP preview/import/replace/remove; relative assets; initials fallback | Service and browser; renamed-directory fixture |
+| Tags | Persistent canonical assignments, search/check/create, usage page | Legacy union migration and browser |
+| Types | Reusable defaults/custom interaction and relationship types; normalized case/spacing | Repository and browser |
+| Interactions | Global/profile multi-person events, local date, summary/takeaways/actions | Browser, shared participant and invalid-date regression |
+| Intel | Typed content, provenance, two dates, optional interaction, revisions | Legacy preservation, stale-edit, reference validation and browser |
+| Relationships | Directed endpoints; independent simultaneous typed episodes; start/end/history | Coworker + Friend + end + re-add regression and browser |
+| Follow-ups | Person/interaction/opportunity pending actions, complete/reschedule | Idempotency, restart, preserved completion-cycle tests |
+| Timeline | Derived events; recorded/source/event labels; no imported-prose fabrication | Chronology regression and browser |
+| Contacts/opportunities | Existing Add/browse profile flows retained | Existing backend/API/browser suite |
+| Portable storage | Marker/sibling layout, overrides, ambiguity errors, visible path | Existing path tests and copied portable checks |
+| Network Map | Disabled future destination | Source/browser inspection |
+| Analytics | Absent from navigation | Source inspection |
+| CLI/TUI | Secondary historical tools retained; no new parity contract | Existing regression suite |
 
-No AI, cloud sync, graph visualization, encryption, or integration capability is claimed.
-See verification.md for the executed results and native Windows verification boundary.
+There is no AI, cloud synchronization, remote service, encryption or graph visualization.
+See [verification](verification.md) and [implementation boundaries](casefile-iteration.md).

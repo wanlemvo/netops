@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 
 MIGRATIONS: list[tuple[int, str]] = [
@@ -425,6 +425,27 @@ CREATE TABLE relationship_revisions (
     UNIQUE(relationship_link_id, revision)
 );
 """))
+
+
+_completion_sql = '''CREATE TABLE follow_up_completions (
+    event_id TEXT PRIMARY KEY, kind TEXT NOT NULL, record_id TEXT NOT NULL,
+    person_ids TEXT NOT NULL, action TEXT, scheduled_date TEXT, completed_at TEXT NOT NULL
+);'''
+for _kind, _table, _key, _people, _action in [
+    ('person', 'people', 'person_id', 'json_array(NEW.person_id)', 'NEW.next_action'),
+    ('interaction', 'interactions', 'interaction_id', "(SELECT json_group_array(person_id) FROM interaction_people WHERE interaction_id=NEW.interaction_id)", 'COALESCE(NEW.action_items,NEW.summary)'),
+    ('opportunity', 'opportunities', 'opportunity_id', "(SELECT json_group_array(person_id) FROM opportunity_people WHERE opportunity_id=NEW.opportunity_id)", 'NEW.title'),
+]:
+    _completion_sql += f'''
+    INSERT INTO follow_up_completions SELECT lower(hex(randomblob(16))), '{_kind}', NEW.{_key}, {_people}, {_action}, NEW.follow_up_date, NEW.follow_up_completed_at
+        FROM {_table} AS NEW WHERE NEW.follow_up_completed_at IS NOT NULL;
+    CREATE TRIGGER record_{_kind}_completion AFTER UPDATE OF follow_up_completed_at ON {_table}
+    WHEN OLD.follow_up_completed_at IS NULL AND NEW.follow_up_completed_at IS NOT NULL
+    BEGIN
+        INSERT INTO follow_up_completions VALUES (lower(hex(randomblob(16))), '{_kind}', NEW.{_key}, {_people}, {_action}, NEW.follow_up_date, NEW.follow_up_completed_at);
+    END;
+    '''
+MIGRATIONS.append((10, _completion_sql))
 
 
 def current_version(connection: sqlite3.Connection) -> int:

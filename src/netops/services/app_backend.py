@@ -19,6 +19,7 @@ from netops.services.people import PeopleService
 from netops.services.casefile import CasefileService
 from netops.services.intelligence import IntelligenceService
 from netops.services.relationships import RelationshipService
+from netops.services.timeline import derive_timeline
 from netops.storage import NetOpsRepository, connect
 
 JsonDict = dict[str, Any]
@@ -151,8 +152,7 @@ class NetworkOpsBackend:
             person.origin_story,
             fallback="No current read recorded.",
         )
-        timeline = [*interactions, *signals]
-        timeline.sort(key=lambda item: item.get("sort_date") or "", reverse=True)
+        timeline = derive_timeline(self.repository, person.person_id, interactions, signals, relationship_links)
 
         return {
             "view": "dossier",
@@ -206,6 +206,7 @@ class NetworkOpsBackend:
             },
             "connections": relationship_links,
             "intel_timeline": timeline,
+            "timeline": timeline,
             "raw_notes_vault": raw_notes,
             "dossier_folders": [
                 {"id": "identity", "label": "Full Identity File", "count": 1},
@@ -249,7 +250,7 @@ class NetworkOpsBackend:
         person = self.people.get_v1_person(person_query)
         updated = V1Person.model_validate({**person.model_dump(), **person_fields})
         with self.repository.connection:
-            self.repository.update_v1_person(updated)
+            self.repository.update_v1_person(updated, fields=set(person_fields))
             if "tags" in payload:
                 self.repository.set_person_tags(person.person_id, self._text_list(payload.get("tags")))
             self._create_inline_contact_methods(person.person_id, payload)

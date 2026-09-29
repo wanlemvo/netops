@@ -32,3 +32,13 @@ def test_custom_vocabularies_persist_and_normalize(v1_repository):
     assert v1_repository.save_type('relationship', 'study partner')['type_id'] == first['type_id']
     assert v1_repository.save_type('interaction', 'Working   Session')['type_id'] == v1_repository.save_type('interaction', 'working session')['type_id']
     assert {'Friend','Coworker'} <= {t['label'] for t in v1_repository.catalog()['relationship']}
+
+
+def test_shared_legacy_person_writes_use_canonical_tags(v1_repository):
+    from netops.domain.models import Person
+    person = v1_repository.add_person(Person(display_name='Fictional legacy writer', tags=['Research']))
+    b = NetworkOpsBackend(v1_repository)
+    assert b.get_person(person.id)['tags'] == ['Research']
+    person.tags = ['Design']
+    v1_repository.update_person(person)
+    assert b.get_person(person.id)['tags'] == ['Design']

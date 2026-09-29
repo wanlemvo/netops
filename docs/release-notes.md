@@ -1,5 +1,19 @@
 # NetOps 0.2.0 — desktop reconciliation candidate
 
+## Current case-file iteration
+
+- Replace the permanent people rail with a standalone directory and full profile view.
+- Add persistent top bar, collapsible navigation and shared global/contextual creation.
+- Render imported dossier formatting; edit and append individual sections with prior versions retained.
+- Add GUI photo management, reusable types, canonical tags and tag usage.
+- Expose multiple interaction participants and separate event dates from entry timestamps.
+- Present Signals as typed Intel with provenance and preserved corrections.
+- Preserve multiple simultaneous relationship types as independent historical episodes.
+- Derive Timeline from structured records and retain follow-up completion history after rescheduling.
+- Add schemas 6–10 without replacing personal data. See [iteration details](casefile-iteration.md).
+
+## Original reconciliation
+
 - Reconcile the verified GUI source and earlier dossier work while retaining both Git histories.
 - Repair dynamic dossier actions, add Edit Person, and separate record browsing from creation.
 - Preserve drafts on errors, prevent duplicate submission and make person saves atomic.
@@ -11,5 +25,4 @@
 
 This is a local review candidate, not a published release. Requires Windows 10/11 with Edge WebView2.
 No project license has been selected; licensing remains a decision before public distribution.
-Tags management, Analytics and Map View are not implemented. Photo management remains available
-through the CLI; the GUI displays stored photos. No cloud sync or database encryption is provided.
+Network Map remains disabled; Analytics is absent. No cloud sync or database encryption is provided.

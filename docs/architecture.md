@@ -19,10 +19,33 @@ Each HTTP request owns and closes its database connection. Nested repository wri
 outer service transaction, so compound person/contact saves roll back together. Migration scripts
 and their version records commit atomically. Legacy tables and append-only raw notes are retained.
 
-Schema 5 adds completion timestamps to people, interactions and opportunities. Completing a follow-up
+Schema 5 added completion timestamps to people, interactions and opportunities. Completing a follow-up
 preserves its original context; rescheduling clears completion. Person edits reset completion only
 when schedule/action changes. Dated historical interactions are recovered into the pending list.
 An opportunity follow-up can be completed without closing the opportunity itself.
+
+Schemas 6–10 add dossier sections and scoped revisions, persistent type vocabulary, Intel provenance
+and revisions, independently dated relationship episodes and revisions, and immutable follow-up
+completion events. Original `people.dossier` text is retained; headings project into stable section IDs
+until a correction is saved separately. Markdown is rendered with raw HTML and image embedding disabled.
+Section editors accept ordinary text; Append preserves existing formatting, and Edit retains the prior
+version in history. Photo uploads normalize still JPEG/PNG/WebP images into portable JPEG assets.
+
+`storage/catalog.py` is the application tag/type catalog. Migration unions legacy JSON assignments
+with normalized taggings without deleting historical tag IDs. Equivalent whitespace/case labels are
+one application choice. GUI writes use normalized taggings and update the compatibility JSON cache.
+Relationship rows each represent one type/episode: ending Friend does not affect Coworker, and a
+later Friend episode gets a new ID. Direction is source → target; roles are never silently reversed.
+
+`services/intelligence.py`, `services/relationships.py`, and `services/casefile.py` validate scoped
+writes and retain meaningful prior content. Their histories are not a general audit system.
+`services/timeline.py` derives chronology from structured records. Unknown event dates remain unknown;
+recording timestamps are explicitly labeled. Imported prose never generates confirmed timeline events.
+
+The top bar persists across screens. Navigation collapse changes CSS and localStorage only.
+People directory state is separate from the selected profile and its tabs. Global and profile creation
+share forms; global creation never borrows a hidden selected person. Interaction participants are a
+visible searchable multi-select. Dates default from local calendar components, not UTC serialization.
 
 The GUI delegates clicks from stable containers so newly rendered controls work. Tabs show records;
 Add controls open forms. Errors retain draft input, pending submissions disable Save, and successful

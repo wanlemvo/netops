@@ -263,6 +263,7 @@ class NetOpsRepository(CasefileRepository, CatalogRepository):
                         person.updated_at,
                     ),
                 )
+            self.set_person_tags(person.id, person.tags)
         return person
 
     def add_v1_person(self, person: V1Person) -> V1Person:
@@ -311,8 +312,21 @@ class NetOpsRepository(CasefileRepository, CatalogRepository):
             )
         return person
 
-    def update_v1_person(self, person: V1Person) -> V1Person:
+    def update_v1_person(self, person: V1Person, *, fields: set[str] | None = None) -> V1Person:
         person.updated_at = now_iso()
+        if fields is not None:
+            allowed = set(V1Person.model_fields) - {'person_id', 'created_at', 'follow_up_completed_at'}
+            if not fields <= allowed:
+                raise UserInputError('Unknown person field.')
+            values = {key: getattr(person, key) for key in fields}
+            if 'name' in values:
+                values['display_name'] = person.name
+            if 'interests' in values:
+                values['interests'] = person.interests or ''
+            values['updated_at'] = person.updated_at
+            with self.connection:
+                self.connection.execute('UPDATE people SET ' + ','.join(f'{key}=?' for key in values) + ' WHERE person_id=?', (*values.values(), person.person_id))
+            return person
         with self.connection:
             self.connection.execute(
                 """
@@ -771,6 +785,7 @@ class NetOpsRepository(CasefileRepository, CatalogRepository):
                     person.id,
                 ),
             )
+            self.set_person_tags(person.id, person.tags)
         return person
 
     def get_person(self, person_id: str) -> Person:

@@ -8,7 +8,7 @@ import pytest
 
 from netops.services.app_backend import NetworkOpsBackend
 from netops.storage import NetOpsRepository, connect
-from netops.storage.migrations import MIGRATIONS, current_version
+from netops.storage.migrations import MIGRATIONS, SCHEMA_VERSION, current_version
 from netops.gui.server import NetOpsGuiServer
 from netops.domain.validation import UserInputError
 
@@ -73,23 +73,23 @@ def test_v4_migration_recovers_dated_interaction_without_losing_rows(tmp_path):
         c.executescript(sql)
         c.execute('INSERT INTO schema_version(version) VALUES (?)', (version,))
         c.commit()
+    pid = 'fictional-person'
+    record = {'interaction_id': 'fictional-interaction'}
+    c.execute("INSERT INTO people(id,person_id,display_name,name,dossier,created_at,updated_at) VALUES (?,?,?,?,?,?,?)", (pid,pid,'Migration Fiction','Migration Fiction','Preserve\nall lines','2020-01-01','2020-01-01'))
+    c.execute("INSERT INTO interactions(id,interaction_id,person_id,occurred_on,interaction_date,interaction_type,notes,summary,follow_up_date,follow_up_required,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (record['interaction_id'],record['interaction_id'],pid,'2020-01-02','2020-01-02','meeting','Historical summary','Historical summary','2030-04-05',0,'2020-01-02','2020-01-02'))
+    c.execute("INSERT INTO interaction_people VALUES (?,?,?,?,?,?)", ('fictional-participant',record['interaction_id'],pid,'primary',1,'2020-01-02'))
+    c.commit()
+    # Exercise a consistent SQLite backup and restore before applying migrations.
+    restored_path = tmp_path / 'restored.sqlite3'
+    with sqlite3.connect(restored_path) as restored:
+        c.backup(restored)
     c.close()
-    # Build representative old records with the current repository, then restore v4 shape in a fixture copy.
-    app = backend(path)
-    pid = app.create_person({'name': 'Migration Fiction', 'dossier': 'Preserve\nall lines'})['person_id']
-    record = app.add_interaction({'people': [pid], 'summary': 'Historical summary', 'follow_up_date': '2030-04-05'})
-    c = app.repository.connection
-    with c:
-        for trigger in ['reopen_person_follow_up', 'reopen_interaction_follow_up', 'reopen_opportunity_follow_up']:
-            c.execute(f'DROP TRIGGER {trigger}')
-        for table in ['people', 'interactions', 'opportunities']:
-            c.execute(f'ALTER TABLE {table} DROP COLUMN follow_up_completed_at')
-        c.execute('DELETE FROM schema_version WHERE version = 5')
-        c.execute('UPDATE interactions SET follow_up_required = 0')
+    path = restored_path
+    c = sqlite3.connect(path)
     before = c.execute('SELECT summary, follow_up_date FROM interactions').fetchall()
     c.close()
     migrated = backend(path)
-    assert current_version(migrated.repository.connection) == 5
+    assert current_version(migrated.repository.connection) == SCHEMA_VERSION
     after = migrated.repository.connection.execute('SELECT summary, follow_up_date FROM interactions').fetchall()
     assert [tuple(x) for x in before] == [tuple(x) for x in after]
     assert migrated.get_person(pid)['dossier'] == 'Preserve\nall lines'

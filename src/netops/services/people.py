@@ -191,7 +191,7 @@ class PeopleService:
             raise UserInputError(f"Unknown V1 person field: {key}.")
         person = self.get_v1_person(person_query)
         setattr(person, key, value)
-        return self.repository.update_v1_person(person)
+        return self.repository.update_v1_person(person, fields={key})
 
     def list_people(self, *, tag: str | None = None, search: str | None = None) -> list[Person]:
         return self.repository.list_people(tag=tag, search=search)
