@@ -2,10 +2,41 @@
 
 ## Current case-file iteration
 
-The new iteration is documented in [casefile-iteration.md](casefile-iteration.md).
-Source tests pass with isolated fictional data, including real Edge browser workflows for the new
-sections, photos, tags, participants, Intel and relationship episodes. Final package and native
-candidate verification results will be recorded when the clean build is completed.
+The implementation is documented in [casefile-iteration.md](casefile-iteration.md).
+The final Windows candidate was built from clean commit
+`9447015806d571a66dd09506bd1d0f458deb5b52` on `codex/reconcile-desktop`.
+
+| Check | Executed result |
+|---|---|
+| Full installed-package suite | **122 passed** from a clean export of `2b963095`; isolated installed wheel, no source-tree import shortcut |
+| Final layout / package | Only four CSS lines changed after that full run; final `94470158` wheel rebuilt from a clean export, all three GUI assets verified byte-for-byte, both browser workflows passed again |
+| Backend / migrations | Section revision conflicts and source preservation; tag union and reusable type normalization; unknown dates; Intel provenance; simultaneous Coworker + Friend, ending one, restarting with a new ID; derived chronology; completion cycles |
+| Browser | Standalone directory; collapse without reload or draft loss; failed saves; duplicate names; section Edit/Append/History; photo preview/save; tags; multiple participants; Intel correction/history; relationship ending/re-adding; reload; 1024/1440 layouts |
+| SQLite restoration | Consistent backup of a genuine v4 fictional fixture restored and migrated to schema 10; original text/IDs preserved and foreign keys checked |
+| Native Windows | Final packaged pywebview window rendered Dashboard, People and Intel controls; Windows UI Automation and native screenshots verified |
+| Portable move / restart | Copied final executable launched, saved a fictional record and photo, closed, moved to a renamed folder with spaces, reopened and retrieved both record and JPEG photo |
+| Release ZIP | Manifest file hashes and ZIP SHA-256 verified; **zero databases** in the archive |
+| Personal installation | Development, package, browser and native checks used isolated fictional data; the flash-drive installation and personal database were not upgraded |
+
+Final archive: `dist/netops-0.2.0-94470158.zip`.
+SHA-256: `50ec31958ed9fe033d2ab4bd74d4413d01fd8f75551888c6c86b9063c3b0372e`.
+The embedded build manifest records Python 3.12.14, dependency versions, build settings and binary hashes.
+Wheel and source distribution: `artifacts/casefile-release-package/packages/`.
+The fictional preview launcher is `artifacts/NetOps Casefile Preview/Open NetOps Preview.cmd`;
+it explicitly selects its own database, regardless of existing environment overrides.
+
+Native launch, rendering and persistence checks are distinct from browser click/form tests. The entire
+browser sequence was not repeated through Windows UI Automation. Updated screenshots and the recorded
+browser workflow are in [demo](demo/README.md).
+
+Evidence: `artifacts/casefile-package-final/tests.xml`, `artifacts/casefile-release-package/browser-tests.xml`,
+`artifacts/casefile-native-final/results.json`, `artifacts/casefile-release-results.json`, and adjacent logs.
+An initial package test attempt could not access Windows' shared pytest temp folder; rerunning with an
+explicit new isolated test directory resolved it. PyInstaller reported optional platform/module warnings;
+the resulting Windows executable passed the native checks. GitHub CI has not run because nothing was pushed.
+
+Later documentation/capture commits do not change application code or the candidate's provenance.
+Older local candidates remain retained; the archive named above is the final candidate for this iteration.
 
 ## Original reconciliation evidence (earlier build)
 

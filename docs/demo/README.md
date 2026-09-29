@@ -7,6 +7,10 @@ workflow against the same GUI assets and backend; it is not a recording of the n
 [Watch the recorded workflow](workflow.webm). The separate native capture below is from the
 rebuilt Windows executable with an isolated fictional database.
 
+These captures show the case-file iteration built from `94470158`. To inspect it locally, open
+`artifacts/NetOps Casefile Preview/Open NetOps Preview.cmd`. The preview contains fictional data
+and explicitly selects its separate database. The distributable ZIP contains no database.
+
 ![Native Windows application](native-window.png)
 
 Create a separate dataset from the repository root:
@@ -27,10 +31,15 @@ $env:NETOPS_CAPTURE_DIR = 'docs/demo'
 ```
 
 On Linux, install Playwright Chromium instead. Tests create fresh temporary databases.
-Capture script: inspect Dashboard → Avery dossier → search for a missing person → add Rowan Quinn
-→ edit multiline dossier → demonstrate invalid-date feedback → save → log and complete a follow-up
-→ add contact, signal, opportunity and relationship → reload and verify persistence.
+Capture script: inspect Dashboard → People directory → Avery dossier and rendered sections → search
+for a missing person → add Rowan Quinn → demonstrate validation/network draft preservation → edit and
+append a section → inspect history → log a shared interaction and complete its follow-up → add contact,
+Intel, opportunity and relationship → reload → distinguish duplicate names → verify navigation collapse.
+The second browser regression additionally covers photo preview, inline tags, Intel revisions, and
+independent relationship endings/restarts.
 
 ![Dashboard](dashboard.png)
 
 ![Dossier](dossier.png)
+
+![Rendered sections and open loops](dossier-sections.png)
