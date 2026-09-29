@@ -6,12 +6,11 @@ const state = {
   selectedDossier: null,
   activeView: "dashboard",
   dossierTab: "dossier",
+  peopleMode: "directory",
+  directorySearch: "",
 };
 
 const content = document.querySelector("#content");
-const peopleList = document.querySelector("#people-list");
-const peopleCount = document.querySelector("#people-count");
-const peopleTotal = document.querySelector("#people-total");
 const searchInput = document.querySelector("#search-input");
 const modal = document.querySelector("#modal");
 const modalTitle = document.querySelector("#modal-title");
@@ -67,11 +66,7 @@ async function load() {
   document.querySelector("#database-path").textContent = settings.database_path;
   state.overview = await api("/api/overview");
   state.workspace = await api("/api/workspace");
-  state.people = searchInput.value ? await api(`/api/people?search=${encodeURIComponent(searchInput.value)}`) : state.overview.people || [];
-  if (!state.selectedPersonId && state.people.length) {
-    state.selectedPersonId = state.people[0].person_id;
-  }
-  renderPeople();
+  state.people = state.overview.people || [];
   await loadSelectedDossier();
   render();
 }
@@ -85,13 +80,18 @@ async function loadSelectedDossier() {
 }
 
 function renderPeople() {
-  peopleCount.textContent = state.people.length;
-  peopleTotal.textContent = `${state.people.length} total`;
-  if (!state.people.length) {
-    peopleList.innerHTML = `<div class="empty">No people yet. Add the first person to begin.</div>`;
-    return;
-  }
-  peopleList.innerHTML = state.people
+  const rows = matchingPeople(state.directorySearch);
+  content.innerHTML = `<div class="page-heading"><div><div class="eyebrow">Your network</div><h1>People</h1></div><button class="primary-button" data-action="person">+ New Person</button></div><label class="directory-search">Search directory<input id="directory-search" type="search" value="${escapeHtml(state.directorySearch)}" placeholder="Name, role, organization or tag" /></label><div id="directory-count" class="muted">${rows.length} people</div><div id="people-list" class="people-directory">${peopleRows(rows)}</div>`;
+}
+
+function matchingPeople(query) {
+  const needle = query.trim().toLowerCase();
+  return state.people.filter(p => [p.name, p.alias, p.role, p.organization, p.location, ...(p.tags || [])].filter(Boolean).join(" ").toLowerCase().includes(needle));
+}
+
+function peopleRows(rows) {
+  if (!rows.length) return `<div class="empty">No people match this view.</div>`;
+  return rows
     .map((person) => `
       <button class="person-row ${person.person_id === state.selectedPersonId ? "active" : ""}" data-person="${person.person_id}">
         ${avatar(person)}
@@ -111,11 +111,11 @@ function render() {
     item.classList.toggle("active", item.dataset.view === state.activeView);
   });
   if (state.activeView === "dashboard") return renderDashboard();
-  if (state.activeView === "people") return renderDossier();
-  if (state.activeView === "interactions") return renderCollection("Interactions", state.workspace?.interactions || [], renderRecord);
-  if (state.activeView === "signals") return renderCollection("Signals", state.workspace?.signals || [], renderSignalRecord);
+  if (state.activeView === "people") return state.peopleMode === "profile" ? renderDossier() : renderPeople();
+  if (state.activeView === "interactions") return renderCollection("Interactions", state.workspace?.interactions || [], renderRecord, "interaction");
+  if (state.activeView === "signals") return renderCollection("Intel", state.workspace?.signals || [], renderSignalRecord, "signal");
   if (state.activeView === "opportunities") return renderCollection("Opportunities", state.workspace?.opportunities || [], renderOpportunityRecord);
-  if (state.activeView === "relationships") return renderCollection("Relationships", state.workspace?.relationships || [], renderRelationshipRecord);
+  if (state.activeView === "relationships") return renderCollection("Relationships", state.workspace?.relationships || [], renderRelationshipRecord, "relationship");
   return renderPlaceholder();
 }
 
@@ -166,14 +166,14 @@ function renderDossier() {
   if (state.dossierTab !== "dossier") {
     const tabs = {
       interactions: ["Timeline", "interaction", renderRecord],
-      signals: ["Signals", "signal", renderSignalRecord],
+      signals: ["Intel", "signal", renderSignalRecord],
       opportunities: ["Opportunities", "opportunity", renderOpportunityRecord],
       connections: ["Relationships", "relationship", renderRelationshipRecord],
       contacts: ["Contact", "contact", (x) => `<div class="record-row">${escapeHtml(x.type)}: ${escapeHtml(x.value)}</div>`],
     };
     const [title, action, renderer] = tabs[state.dossierTab];
     renderCollection(`${person.name} / ${title}`, dossier.folder_payloads[state.dossierTab] || [], renderer);
-    content.insertAdjacentHTML("afterbegin", dossierTabs() + `<button class="primary-button" data-action="${action}">Add ${title === "Timeline" ? "Interaction" : title}</button>`);
+    content.insertAdjacentHTML("afterbegin", backToPeople() + dossierTabs() + `<button class="primary-button" data-scope="profile" data-action="${action}">+ New ${title === "Timeline" ? "Interaction" : title === "Relationships" ? "Relationship" : title === "Opportunities" ? "Opportunity" : title}</button>`);
     return;
   }
   const contacts = dossier.folder_payloads.contacts || [];
@@ -186,7 +186,7 @@ function renderDossier() {
   const strength = person.relationship_strength || "unset";
 
   content.innerHTML = `
-    <div class="dossier-grid">
+    ${backToPeople()}<div class="dossier-grid">
       <div>
         <div class="breadcrumb">People > ${escapeHtml(person.name)}</div>
         <section class="profile-hero">
@@ -283,9 +283,9 @@ function renderDossier() {
   `;
 }
 
-function renderCollection(title, items, renderer) {
+function renderCollection(title, items, renderer, action = "") {
   content.innerHTML = `
-    <div class="breadcrumb">${escapeHtml(title)}</div>
+    <div class="page-heading"><h1>${escapeHtml(title)}</h1>${action ? `<button class="primary-button" data-action="${action}">+ New ${action === "signal" ? "Intel" : action[0].toUpperCase() + action.slice(1)}</button>` : ""}</div>
     <section class="panel">
       <h3>${escapeHtml(title)}</h3>
       <div class="timeline-list">
@@ -367,13 +367,13 @@ function splitLines(value) {
     .filter(Boolean);
 }
 
-function openModal(kind) {
-  const selected = state.selectedDossier?.person;
+function openModal(kind, scoped = false) {
+  const selected = scoped ? state.selectedDossier?.person : null;
   const peopleOptions = state.people.map((person) => `<option value="${person.person_id}">${escapeHtml(person.name)}</option>`).join("");
-  const selectedOption = selected ? selected.person_id : state.people[0]?.person_id || "";
+  const selectedOption = selected?.person_id || "";
   const forms = {
     person: {
-      title: "Add Person",
+      title: "New Person",
       endpoint: "/api/people",
       method: "POST",
       fields: [
@@ -426,7 +426,7 @@ function openModal(kind) {
       ],
     },
     interaction: {
-      title: "Log Interaction",
+      title: "New Interaction",
       endpoint: "/api/interactions",
       method: "POST",
       fields: [
@@ -441,11 +441,12 @@ function openModal(kind) {
       ],
     },
     signal: {
-      title: "Add Signal",
-      endpoint: `/api/people/${encodeURIComponent(selectedOption)}/signals`,
+      title: "New Intel",
+      endpoint: "/api/people/__subject__/signals",
       method: "POST",
       fields: [
-        field("text", "Signal Text", "textarea", true),
+        select("subject_id", "Person", state.people.map((person) => [person.person_id, person.name + (person.organization ? ` · ${person.organization}` : "")]), selectedOption),
+        field("text", "Information", "textarea", true),
         field("confidence", "Confidence"),
         field("source_description", "Source"),
       ],
@@ -533,8 +534,9 @@ function feedback(message, error = false) {
   box.classList.toggle("error", error);
 }
 function dossierTabs() {
-  return `<div class="tabbar">${[["dossier", "Dossier"], ["interactions", "Timeline"], ["signals", "Signals"], ["opportunities", "Opportunities"], ["connections", "Relationships"], ["contacts", "Contact"]].map(([id, title]) => `<button class="tab ${state.dossierTab === id ? "active" : ""}" data-tab="${id}">${title}</button>`).join("")}</div>`;
+  return `<div class="tabbar">${[["dossier", "Dossier"], ["interactions", "Timeline"], ["signals", "Intel"], ["opportunities", "Opportunities"], ["connections", "Relationships"], ["contacts", "Contact"]].map(([id, title]) => `<button class="tab ${state.dossierTab === id ? "active" : ""}" data-tab="${id}">${title}</button>`).join("")}</div>`;
 }
+function backToPeople() { return `<button class="action-link back-link" id="back-to-people">← Back to People</button>`; }
 function completeButton(item) {
   return `<button class="action-link" data-complete="${escapeHtml(item.id)}" data-kind="${escapeHtml(item.kind)}">Complete follow-up</button>`;
 }
@@ -546,7 +548,7 @@ modalForm.addEventListener("submit", async (event) => {
   if (saving) return;
   const payload = Object.fromEntries(new FormData(modalForm).entries());
   if (payload.person_id) { payload.people = [payload.person_id]; delete payload.person_id; }
-  const endpoint = modalForm.dataset.endpoint;
+  const endpoint = modalForm.dataset.endpoint.replace("__subject__", encodeURIComponent(payload.subject_id || ""));
   const method = modalForm.dataset.method;
   saving = true;
   modalForm.querySelector('[type="submit"]').disabled = true;
@@ -556,6 +558,8 @@ modalForm.addEventListener("submit", async (event) => {
       searchInput.value = "";
       state.selectedPersonId = result.person_id;
       state.activeView = "people";
+      state.peopleMode = "profile";
+      state.directorySearch = "";
       state.dossierTab = "dossier";
     }
     closeModal();
@@ -575,19 +579,28 @@ document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button || button.disabled) return;
   try {
+    if (button.id === "nav-toggle") { setNavigation(!document.body.classList.contains("nav-collapsed")); return; }
+    if (button.id === "new-toggle") { const menu = document.querySelector("#new-menu"); menu.classList.toggle("hidden"); button.setAttribute("aria-expanded", String(!menu.classList.contains("hidden"))); return; }
     if (button.id === "modal-close" || button.id === "form-cancel") { if (!saving) closeModal(); return; }
+    if (button.id === "back-to-people") { state.peopleMode = "directory"; render(); return; }
     if (button.dataset.person) {
       state.selectedPersonId = button.dataset.person;
       state.activeView = "people";
+      state.peopleMode = "profile";
       state.dossierTab = "dossier";
-      await loadSelectedDossier(); renderPeople(); render();
+      document.querySelector("#search-results").classList.add("hidden");
+      await loadSelectedDossier(); render();
     } else if (button.dataset.tab) {
       state.dossierTab = button.dataset.tab; render();
     } else if (button.dataset.view) {
-      state.activeView = button.dataset.view; render();
+      state.activeView = button.dataset.view;
+      if (state.activeView === "people") state.peopleMode = "directory";
+      render();
     } else if (button.dataset.action) {
-      if (button.dataset.action !== "person" && !state.selectedPersonId) { feedback("Add or select a person first.", true); return; }
-      openModal(button.dataset.action);
+      const scoped = button.dataset.scope === "profile" || (state.activeView === "people" && state.peopleMode === "profile" && content.contains(button));
+      openModal(button.dataset.action, scoped);
+      document.querySelector("#new-menu").classList.add("hidden");
+      document.querySelector("#new-toggle").setAttribute("aria-expanded", "false");
     } else if (button.dataset.complete) {
       button.disabled = true;
       await api(`/api/follow-ups/${encodeURIComponent(button.dataset.kind)}/${encodeURIComponent(button.dataset.complete)}/complete`, { method: "POST", body: "{}" });
@@ -595,20 +608,28 @@ document.addEventListener("click", async (event) => {
     }
   } catch (error) { feedback(error.message, true); button.disabled = false; }
 });
-searchInput.addEventListener("input", async () => {
-  const generation = ++searchGeneration;
-  try {
-    const people = await api(`/api/people?search=${encodeURIComponent(searchInput.value)}`);
-    if (generation !== searchGeneration) return;
-    state.people = people;
-    if (!people.some((p) => p.person_id === state.selectedPersonId)) {
-      state.selectedPersonId = people[0]?.person_id || null;
-      await loadSelectedDossier();
-      if (generation !== searchGeneration) return;
-    }
-    renderPeople(); render();
-  } catch (error) { feedback(error.message, true); }
+searchInput.addEventListener("input", () => {
+  const results = document.querySelector("#search-results");
+  results.classList.toggle("hidden", !searchInput.value.trim());
+  results.innerHTML = peopleRows(matchingPeople(searchInput.value));
 });
+document.addEventListener("input", (event) => {
+  if (event.target.id !== "directory-search") return;
+  state.directorySearch = event.target.value;
+  const rows = matchingPeople(state.directorySearch);
+  document.querySelector("#people-list").innerHTML = peopleRows(rows);
+  document.querySelector("#directory-count").textContent = `${rows.length} people`;
+});
+function setNavigation(collapsed) {
+  document.body.classList.toggle("nav-collapsed", collapsed);
+  const button = document.querySelector("#nav-toggle");
+  button.setAttribute("aria-expanded", String(!collapsed));
+  button.setAttribute("aria-label", collapsed ? "Expand navigation" : "Collapse navigation");
+  button.title = button.getAttribute("aria-label");
+  try { localStorage.setItem("netops.navCollapsed", JSON.stringify(collapsed)); } catch {}
+}
+try { setNavigation(localStorage.getItem("netops.navCollapsed") === "true"); } catch {}
+document.querySelector(".brand").addEventListener("click", event => { event.preventDefault(); state.activeView = "dashboard"; render(); });
 
 load().catch((error) => {
   content.innerHTML = `<div class="empty">NetworkOps could not load: ${escapeHtml(error.message)}</div>`;
