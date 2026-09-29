@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 
 MIGRATIONS: list[tuple[int, str]] = [
@@ -390,6 +390,24 @@ CREATE TABLE vocabulary (
     normalized_name TEXT NOT NULL,
     created_at TEXT NOT NULL,
     UNIQUE(kind, normalized_name)
+);
+"""))
+
+
+MIGRATIONS.append((8, """
+ALTER TABLE signals ADD COLUMN intel_type TEXT NOT NULL DEFAULT 'Signal';
+ALTER TABLE signals ADD COLUMN event_date TEXT;
+ALTER TABLE signals ADD COLUMN source_date TEXT;
+ALTER TABLE signals ADD COLUMN origin TEXT;
+ALTER TABLE signals ADD COLUMN creator TEXT;
+ALTER TABLE signals ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE intel_revisions (
+    revision_id TEXT PRIMARY KEY,
+    signal_id TEXT NOT NULL REFERENCES signals(signal_id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    snapshot TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    UNIQUE(signal_id, revision)
 );
 """))
 

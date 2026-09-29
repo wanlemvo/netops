@@ -242,15 +242,11 @@ function renderRecord(item) {
 }
 
 function renderSignalRecord(item) {
-  return `
-    <div class="side-row">
-      <span class="index-dot">*</span>
-      <div>
-        <div class="card-title">${escapeHtml(item.text || "Signal")}</div>
-        <div class="muted">${escapeHtml(item.confidence || "unknown confidence")}</div>
-      </div>
-    </div>
-  `;
+  return `<article class="record-row intel-record"><div><div class="eyebrow">${escapeHtml(item.intel_type || "Signal")} · ${escapeHtml(item.person)}</div><p>${multiline(item.text)}</p>
+    <div class="muted">Event: ${escapeHtml(item.event_date || "Unknown")} · Source date: ${escapeHtml(item.source_date || "Unknown")} · Confidence: ${escapeHtml(item.confidence || "Unspecified")}</div>
+    <div class="muted">Source: ${escapeHtml(item.source_description || "Unspecified")} · Origin: ${escapeHtml(item.origin || "Unknown")} · Creator: ${escapeHtml(item.creator || "Unknown")}</div>
+    <div class="muted">Recorded: ${escapeHtml(item.created_at || "")}</div>
+    <button class="action-link" data-edit-intel="${item.id}">Edit Intel</button>${item.revision > 1 ? `<button class="action-link" data-intel-history="${item.id}">History</button>` : ""}</div></article>`;
 }
 
 function renderOpportunityRecord(item, index = 0) {
@@ -363,17 +359,7 @@ function openModal(kind, scoped = false) {
         `<label class="field"><span><input name="follow_up_required" type="checkbox" /> Follow-up required (date optional)</span></label>`,
       ],
     },
-    signal: {
-      title: "New Intel",
-      endpoint: "/api/people/__subject__/signals",
-      method: "POST",
-      fields: [
-        select("subject_id", "Person", state.people.map((person) => [person.person_id, person.name + (person.organization ? ` · ${person.organization}` : "")]), selectedOption),
-        field("text", "Information", "textarea", true),
-        field("confidence", "Confidence"),
-        field("source_description", "Source"),
-      ],
-    },
+    signal: {title:"New Intel",endpoint:"/api/people/__subject__/signals",method:"POST",fields:intelFields(null, selectedOption)},
     opportunity: {
       title: "Add Opportunity",
       endpoint: "/api/opportunities",
@@ -521,6 +507,14 @@ document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button || button.disabled) return;
   try {
+    if (button.dataset.editIntel) {
+      const item = state.workspace.signals.find(x=>x.id === button.dataset.editIntel);
+      showForm({title:"Edit Intel", endpoint:"/api/intel/" + item.id, method:"PATCH", fields:intelFields(item, item.person_id)}, "signal"); return;
+    }
+    if (button.dataset.intelHistory) {
+      const rows = await api("/api/intel/" + button.dataset.intelHistory + "/history");
+      showForm({title:"Intel history",endpoint:"",method:"GET",fields:rows.map(r=>`<article class="field full"><h4>${escapeHtml(r.intel_type)}</h4><p>${multiline(r.signal_text)}</p><div class="muted">${escapeHtml(r.event_date || "Unknown event date")} · ${escapeHtml(r.source_description)} · ${escapeHtml(r.origin || "Unknown origin")}</div></article>`)}, "history"); modalForm.querySelector('[type="submit"]').remove(); return;
+    }
     if (button.id === "create-inline-tag") {
       const name = modalForm.querySelector("#new-tag-name").value;
       const tag = await api("/api/tags", {method:"POST",body:JSON.stringify({name})});
@@ -642,3 +636,17 @@ function participantPicker(chosen) {
 modalForm.addEventListener("input", event=>{
   if (event.target.id === "participant-search") for (const label of modalForm.querySelectorAll(".participant-choice")) label.hidden = !label.textContent.toLowerCase().includes(event.target.value.toLowerCase());
 });
+function intelFields(item, personId) {
+  return [
+    item ? `<div class="field"><span>Person</span><strong>${escapeHtml(item.person)}</strong></div><input name="revision" type="hidden" value="${item.revision}">` : select("subject_id","Person",state.people.map(p=>[p.person_id,p.name + (p.organization ? " · " + p.organization : "")]),personId),
+    select("intel_type","Intel type",["Fact","Observation","Signal","Inference","Unknown"],item?.intel_type || "Signal"),
+    field("text","Information","textarea",true,item?.text),
+    field("event_date","Event date","date",false,item ? item.event_date : localToday()),
+    field("source_date","Source date","date",false,item?.source_date),
+    field("source_description","Source","textarea",false,item?.source_description),
+    field("confidence","Confidence","text",false,item?.confidence),
+    select("source_interaction_id","Related interaction", (state.workspace.interactions || []).filter(i=>!personId || (i.participants || []).some(p=>p.person_id === personId)).map(i=>[i.id,`${i.date || "Undated"} · ${i.title} · ${i.summary || i.person}`]),item?.source_interaction_id),
+    select("origin","Origin",["User","Interaction","Web","AI","Document","System","Other"],item ? item.origin : "User"),
+    field("creator","Creator","text",false,item ? item.creator : "Isaac Wanlemvo")
+  ];
+}

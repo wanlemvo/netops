@@ -17,6 +17,7 @@ from netops.services.interactions import InteractionService
 from netops.services.open_loops import OpenLoopService
 from netops.services.people import PeopleService
 from netops.services.casefile import CasefileService
+from netops.services.intelligence import IntelligenceService
 from netops.storage import NetOpsRepository, connect
 
 JsonDict = dict[str, Any]
@@ -69,6 +70,7 @@ class NetworkOpsBackend:
         self.interactions = InteractionService(self.repository, self.people)
         self.loops = OpenLoopService(self.repository, self.people)
         self.casefile = CasefileService(self.repository, self.people)
+        self.intelligence = IntelligenceService(self.repository, self.people)
 
     def get_overview(self) -> JsonDict:
         people = self.repository.list_v1_people()
@@ -289,14 +291,15 @@ class NetworkOpsBackend:
         return interaction.model_dump(mode="json")
 
     def add_signal(self, person_query: str, payload: JsonDict) -> JsonDict:
-        signal = self.people.add_signal(
-            person_query,
-            text=str(payload.get("signal_text") or payload.get("text") or ""),
-            confidence=payload.get("confidence"),
-            source_interaction_id=payload.get("source_interaction_id"),
-            source_description=payload.get("source_description") or payload.get("source"),
-        )
+        signal = self.intelligence.save(person_query, payload)
         return self._signal_item(signal, person=self.people.get_v1_person(person_query))
+
+    def update_intel(self, signal_id: str, payload: JsonDict) -> JsonDict:
+        row = self.repository.connection.execute('SELECT person_id FROM signals WHERE signal_id=?', (signal_id,)).fetchone()
+        if not row:
+            raise NotFoundError('Intel record was not found.')
+        person = self.people.get_v1_person(row['person_id'])
+        return self._signal_item(self.intelligence.save(person.person_id, payload, signal_id), person=person)
 
     def add_opportunity(self, payload: JsonDict) -> JsonDict:
         people = self._people_from_payload(payload)
@@ -422,9 +425,18 @@ class NetworkOpsBackend:
             "person_id": person.person_id,
             "person": person.name,
             "id": signal.signal_id,
-            "date": signal.created_at[:10],
-            "sort_date": signal.created_at,
-            "title": "signal",
+            "date": signal.event_date or signal.source_date,
+            "sort_date": signal.event_date or signal.source_date or signal.created_at,
+            "date_basis": "Event" if signal.event_date else "Source" if signal.source_date else "Recorded",
+            "title": signal.intel_type,
+            "intel_type": signal.intel_type,
+            "event_date": signal.event_date,
+            "source_date": signal.source_date,
+            "created_at": signal.created_at,
+            "updated_at": signal.updated_at,
+            "origin": signal.origin,
+            "creator": signal.creator,
+            "revision": signal.revision,
             "text": signal.signal_text,
             "confidence": signal.confidence,
             "source_interaction_id": signal.source_interaction_id,

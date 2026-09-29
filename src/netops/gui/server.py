@@ -127,6 +127,9 @@ class NetOpsGuiServer:
                 if path == '/api/catalog':
                     self._send_json(self.backend().repository.catalog())
                     return
+                if path.startswith('/api/intel/') and path.endswith('/history'):
+                    self._send_json(self.backend().intelligence.history(_path_part(path, 2)))
+                    return
                 if path == "/api/overview":
                     self._send_json(self.backend().get_overview())
                     return
@@ -161,6 +164,9 @@ class NetOpsGuiServer:
                 if self.headers.get_content_type() != "application/json":
                     raise ValueError("Expected an application/json request.")
                 payload = self._read_json()
+                if method == 'PATCH' and path.startswith('/api/intel/'):
+                    self._send_json(self.backend().update_intel(_path_part(path, 2), payload))
+                    return
                 if method == 'POST' and path == '/api/tags':
                     self._send_json(self.backend().repository.save_catalog_tag(payload.get('name')))
                     return

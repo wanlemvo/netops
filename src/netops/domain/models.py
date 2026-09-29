@@ -241,6 +241,12 @@ class Signal(NetOpsModel):
     confidence: str | None = None
     source_interaction_id: str | None = None
     source_description: str | None = None
+    intel_type: str = 'Signal'
+    event_date: str | None = None
+    source_date: str | None = None
+    origin: str | None = None
+    creator: str | None = None
+    revision: int = 1
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
     archived_at: str | None = None
