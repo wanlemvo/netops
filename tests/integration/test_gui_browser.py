@@ -78,6 +78,9 @@ def test_complete_gui_workflow(tmp_path):
 
             page.get_by_role('button', name='Timeline', exact=True).click()
             page.get_by_role('button', name='+ New Interaction', exact=True).click()
+            expect(page.get_by_label('Rowan Quinn · Fictional Makers Guild', exact=True)).to_be_checked()
+            page.get_by_label('Search participants', exact=True).fill('Morgan')
+            page.get_by_label('Morgan Ellis', exact=False).check()
             page.get_by_label('Summary', exact=True).fill('Agreed on a fictional project outline.')
             page.get_by_label('Follow-Up Date', exact=True).fill('2030-10-05')
             page.get_by_role('button', name='Save', exact=True).click()

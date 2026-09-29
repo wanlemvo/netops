@@ -836,3 +836,5 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--red); outline-o
 .choice-list label { display: block; padding: 5px; }
 .choice-list label[hidden] { display: none; }
 .choice-list input[type=checkbox] { width: auto; }
+.participant-avatars { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; margin: 8px 0; font-size: 12px; }
+.participant-avatars .avatar { width: 28px; height: 28px; font-size: 10px; }

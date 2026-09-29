@@ -12,7 +12,7 @@ from netops.domain.models import (
     V1Interaction,
     V1Person,
 )
-from netops.domain.validation import NotFoundError, UserInputError
+from netops.domain.validation import NotFoundError, UserInputError, normalize_date_text
 from netops.services.interactions import InteractionService
 from netops.services.open_loops import OpenLoopService
 from netops.services.people import PeopleService
@@ -272,9 +272,12 @@ class NetworkOpsBackend:
 
     def add_interaction(self, payload: JsonDict) -> JsonDict:
         people = self._people_from_payload(payload)
+        event_date = normalize_date_text(payload.get('interaction_date', payload.get('date', date.today().isoformat())))
+        if not event_date:
+            raise UserInputError('Interaction date is required.')
         interaction = self.interactions.log_v1_interaction(
             people,
-            interaction_date=str(payload.get("interaction_date") or payload.get("date") or date.today().isoformat()),
+            interaction_date=event_date,
             interaction_type=self.repository.save_type("interaction", payload.get("interaction_type") or payload.get("type") or "Meeting")["label"],
             summary=payload.get("summary"),
             takeaways=payload.get("takeaways"),
@@ -391,10 +394,15 @@ class NetworkOpsBackend:
         return data
 
     def _interaction_item(self, interaction: V1Interaction, *, person: V1Person) -> JsonDict:
+        participants = [dict(row) for row in self.repository.connection.execute('''SELECT p.person_id, p.name, p.organization, p.profile_photo_path
+            FROM interaction_people ip JOIN people p ON p.id=ip.person_id
+            WHERE ip.interaction_id=? ORDER BY ip.is_primary DESC, p.name''', (interaction.interaction_id,))]
         return {
             "kind": "interaction",
             "person_id": person.person_id,
-            "person": person.name,
+            "person": ', '.join(p['name'] for p in participants),
+            "participants": participants,
+            "created_at": interaction.created_at,
             "id": interaction.interaction_id,
             "date": interaction.interaction_date,
             "sort_date": interaction.interaction_date,

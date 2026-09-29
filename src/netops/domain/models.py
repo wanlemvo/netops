@@ -186,7 +186,7 @@ class ContactMethod(NetOpsModel):
 
 class V1Interaction(NetOpsModel):
     interaction_id: str = Field(default_factory=new_id)
-    interaction_date: str = Field(default_factory=lambda: date.today().isoformat())
+    interaction_date: str | None = Field(default_factory=lambda: date.today().isoformat())
     interaction_type: str | None = None
     summary: str | None = None
     takeaways: str | None = None
@@ -396,13 +396,13 @@ class Relationship(NetOpsModel):
 class Interaction(NetOpsModel):
     id: str = Field(default_factory=new_id)
     person_id: str
-    occurred_on: date = Field(default_factory=date.today)
+    occurred_on: date | None = Field(default_factory=date.today)
     interaction_type: str
     notes: str
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
-    @field_validator("person_id", "interaction_type", "notes")
+    @field_validator("person_id", "interaction_type")
     @classmethod
     def required_text(cls, value: str) -> str:
         if not value:

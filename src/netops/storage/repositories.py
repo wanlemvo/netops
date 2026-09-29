@@ -92,7 +92,7 @@ class NetOpsRepository(CasefileRepository, CatalogRepository):
 
     def interaction_from_row(self, row: sqlite3.Row) -> Interaction:
         data = dict(row)
-        data["occurred_on"] = _date_from_text(data["occurred_on"])
+        data["occurred_on"] = _date_from_text(_v1_date_text_from_row(data["occurred_on"]))
         return Interaction(**data)
 
     def open_loop_from_row(self, row: sqlite3.Row) -> OpenLoop:
@@ -153,7 +153,7 @@ class NetOpsRepository(CasefileRepository, CatalogRepository):
         data = dict(row)
         return V1Interaction(
             interaction_id=data.get("interaction_id") or data["id"],
-            interaction_date=_v1_date_text_from_row(data.get("interaction_date") or data["occurred_on"]) or date.today().isoformat(),
+            interaction_date=_v1_date_text_from_row(data.get("interaction_date") if data.get("interaction_date") is not None else data["occurred_on"]),
             interaction_type=data.get("interaction_type"),
             summary=data.get("summary") or data.get("notes"),
             takeaways=data.get("takeaways"),

@@ -233,6 +233,7 @@ function renderRecord(item) {
       <div>
         <div class="card-title">${escapeHtml(item.title || item.kind || "Record")}</div>
         <p>${multiline(item.summary || item.text || item.takeaways || "No summary recorded.")}</p>
+        ${(item.participants || []).length ? `<div class="participant-avatars">${item.participants.map(p=>avatar(p) + `<span>${escapeHtml(p.name)}</span>`).join("")}</div>` : ""}
         ${item.follow_up_completed_at ? `<div class="muted">Follow-up completed</div>` : item.follow_up_required ? completeButton(item) : ""}
       </div>
       <span class="risk-badge">${escapeHtml(item.person || item.kind || "intel")}</span>
@@ -352,8 +353,8 @@ function openModal(kind, scoped = false) {
       endpoint: "/api/interactions",
       method: "POST",
       fields: [
-        select("person_id", "Person", state.people.map((person) => [person.person_id, person.name]), selectedOption),
-        field("interaction_date", "Date", "text", false, new Date().toISOString().slice(0, 10)),
+        participantPicker(selectedOption ? [selectedOption] : []),
+        field("interaction_date", "Date", "date", true, localToday()),
         typePicker("interaction", "interaction_type", "Type", "Meeting"),
         field("summary", "Summary", "textarea"),
         field("takeaways", "Takeaways", "textarea"),
@@ -485,6 +486,8 @@ modalForm.addEventListener("submit", async (event) => {
   const payload = Object.fromEntries(new FormData(modalForm).entries());
   if (modalForm.querySelector('[name="tag_choice"]') || ["person", "edit"].includes(modalForm.dataset.kind)) payload.tags = new FormData(modalForm).getAll("tag_choice");
   delete payload.tag_choice;
+  if (modalForm.dataset.kind === "interaction") payload.people = new FormData(modalForm).getAll("participants");
+  delete payload.participants;
   if (modalForm.dataset.photoData) payload.data = modalForm.dataset.photoData;
   if (payload.person_id) { payload.people = [payload.person_id]; delete payload.person_id; }
   const endpoint = modalForm.dataset.endpoint.replace("__subject__", encodeURIComponent(payload.subject_id || ""));
@@ -631,4 +634,11 @@ function renderTags() {
 }
 modalForm.addEventListener("input", event=>{
   if (event.target.id === "tag-search") for (const label of modalForm.querySelectorAll(".tag-choice")) label.hidden = !label.textContent.toLowerCase().includes(event.target.value.toLowerCase());
+});
+function localToday() { const now = new Date(); return [now.getFullYear(), String(now.getMonth()+1).padStart(2,"0"), String(now.getDate()).padStart(2,"0")].join("-"); }
+function participantPicker(chosen) {
+  return `<fieldset class="field full"><legend>Participants</legend><label for="participant-search">Search participants</label><input id="participant-search" type="search"><div class="choice-list">${state.people.map(p=>`<label class="participant-choice"><input type="checkbox" name="participants" value="${p.person_id}" ${chosen.includes(p.person_id) ? "checked" : ""}> ${escapeHtml(p.name)}${p.organization ? " · " + escapeHtml(p.organization) : ""}</label>`).join("")}</div></fieldset>`;
+}
+modalForm.addEventListener("input", event=>{
+  if (event.target.id === "participant-search") for (const label of modalForm.querySelectorAll(".participant-choice")) label.hidden = !label.textContent.toLowerCase().includes(event.target.value.toLowerCase());
 });
