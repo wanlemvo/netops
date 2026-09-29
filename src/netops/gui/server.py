@@ -124,6 +124,9 @@ class NetOpsGuiServer:
                     self._send_json({"database_path": row[2], "operator": "Isaac Wanlemvo", "version": "0.2.0"})
                     return
 
+                if path == '/api/catalog':
+                    self._send_json(self.backend().repository.catalog())
+                    return
                 if path == "/api/overview":
                     self._send_json(self.backend().get_overview())
                     return
@@ -158,6 +161,12 @@ class NetOpsGuiServer:
                 if self.headers.get_content_type() != "application/json":
                     raise ValueError("Expected an application/json request.")
                 payload = self._read_json()
+                if method == 'POST' and path == '/api/tags':
+                    self._send_json(self.backend().repository.save_catalog_tag(payload.get('name')))
+                    return
+                if method == 'POST' and path in {'/api/types/interaction', '/api/types/relationship'}:
+                    self._send_json(self.backend().repository.save_type(path.rsplit('/', 1)[1], payload.get('label')))
+                    return
 
                 parts = path.strip("/").split("/")
                 if ((len(parts) == 4 and method == 'POST') or (len(parts) == 5 and method == 'PATCH')) and parts[:2] == ['api', 'people'] and parts[3] == 'sections':

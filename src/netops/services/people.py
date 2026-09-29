@@ -151,9 +151,7 @@ class PeopleService:
             )
         )
         if tags:
-            import json
-            with self.repository.connection:
-                self.repository.connection.execute("UPDATE people SET tags = ? WHERE id = ?", (json.dumps(tags), person.person_id))
+            self.repository.set_person_tags(person.person_id, tags)
         return self.repository.get_v1_person(person.person_id)
 
     def get_v1_person(self, person_query: str) -> V1Person:

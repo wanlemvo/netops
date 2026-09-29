@@ -103,7 +103,7 @@ class NetworkOpsBackend:
 
         for person in self.repository.list_v1_people():
             legacy = self._legacy_person(person.person_id)
-            tags = legacy.tags if legacy else []
+            tags = self.repository.person_tag_names(person.person_id)
             haystack = " ".join(
                 value
                 for value in [
@@ -126,7 +126,7 @@ class NetworkOpsBackend:
     def get_person(self, person_query: str) -> JsonDict:
         person = self.people.get_v1_person(person_query)
         legacy = self._legacy_person(person.person_id)
-        return self._person_detail(person, tags=legacy.tags if legacy else [])
+        return self._person_detail(person, tags=self.repository.person_tag_names(person.person_id))
 
     def get_dossier(self, person_query: str) -> JsonDict:
         dossier = self.people.dossier(person_query)
@@ -157,7 +157,7 @@ class NetworkOpsBackend:
                 (item["kind"] == "person" and item["id"] == person.person_id) or
                 (item["kind"] == "interaction" and item["id"] in {x["id"] for x in interactions}) or
                 (item["kind"] == "opportunity" and item["id"] in {x["id"] for x in opportunities})],
-            "person": self._person_detail(person, tags=legacy.tags),
+            "person": self._person_detail(person, tags=self.repository.person_tag_names(person.person_id)),
             "header": {
                 "title": person.name,
                 "subtitle": self._subtitle(person),
@@ -186,7 +186,7 @@ class NetworkOpsBackend:
                 "known_as": self._known_as(person),
                 "location": person.location,
                 "category": person.relationship_type,
-                "tags": legacy.tags,
+                "tags": self.repository.person_tag_names(person.person_id),
             },
             "contact_records": {
                 "preferred": self._preferred_contact(contacts),
@@ -212,7 +212,7 @@ class NetworkOpsBackend:
                 {"id": "connections", "label": "Relationship Links", "count": len(relationship_links)},
             ],
             "folder_payloads": {
-                "identity": self._person_detail(person, tags=legacy.tags),
+                "identity": self._person_detail(person, tags=self.repository.person_tag_names(person.person_id)),
                 "contacts": contacts,
                 "interactions": interactions,
                 "signals": signals,
@@ -247,9 +247,7 @@ class NetworkOpsBackend:
         with self.repository.connection:
             self.repository.update_v1_person(updated)
             if "tags" in payload:
-                import json
-                self.repository.connection.execute("UPDATE people SET tags = ? WHERE id = ?",
-                    (json.dumps(self._text_list(payload.get("tags"))), person.person_id))
+                self.repository.set_person_tags(person.person_id, self._text_list(payload.get("tags")))
             self._create_inline_contact_methods(person.person_id, payload)
         return self.get_person(person.person_id)
 
@@ -277,7 +275,7 @@ class NetworkOpsBackend:
         interaction = self.interactions.log_v1_interaction(
             people,
             interaction_date=str(payload.get("interaction_date") or payload.get("date") or date.today().isoformat()),
-            interaction_type=payload.get("interaction_type") or payload.get("type"),
+            interaction_type=self.repository.save_type("interaction", payload.get("interaction_type") or payload.get("type") or "Meeting")["label"],
             summary=payload.get("summary"),
             takeaways=payload.get("takeaways"),
             action_items=payload.get("action_items"),
@@ -315,7 +313,7 @@ class NetworkOpsBackend:
         link = self.people.add_relationship_link(
             source,
             target,
-            relationship_type=str(payload.get("relationship_type") or payload.get("type") or ""),
+            relationship_type=self.repository.save_type("relationship", payload.get("relationship_type") or payload.get("type") or "")["label"],
             description=payload.get("description"),
         )
         source_person = self.people.resolve_person(source)
@@ -475,7 +473,7 @@ class NetworkOpsBackend:
 
     def _tags_for_person(self, person_id: str) -> list[str]:
         legacy = self._legacy_person(person_id)
-        return legacy.tags if legacy else []
+        return self.repository.person_tag_names(person_id)
 
     def _entity_label(self, entity_type: str, entity_id: str) -> str:
         if entity_type != "person":

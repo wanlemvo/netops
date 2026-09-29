@@ -140,4 +140,4 @@ def test_backend_updates_person_tags_and_long_text(v1_repository):
 
     assert updated["name"] == "Dr Olav Opedal"
     assert updated["dossier"] == "Line one.\nLine two.\nLine three."
-    assert updated["tags"] == ["tmobile", "ai"]
+    assert updated["tags"] == ["ai", "tmobile"]

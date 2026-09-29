@@ -64,6 +64,7 @@ function avatar(person, className = "avatar") {
 async function load() {
   const settings = await api("/api/settings");
   document.querySelector("#database-path").textContent = settings.database_path;
+  state.catalog = await api("/api/catalog");
   state.overview = await api("/api/overview");
   state.workspace = await api("/api/workspace");
   state.people = state.overview.people || [];
@@ -111,6 +112,7 @@ function render() {
     item.classList.toggle("active", item.dataset.view === state.activeView);
   });
   if (state.activeView === "dashboard") return renderDashboard();
+  if (state.activeView === "tags") return renderTags();
   if (state.activeView === "people") return state.peopleMode === "profile" ? renderDossier() : renderPeople();
   if (state.activeView === "interactions") return renderCollection("Interactions", state.workspace?.interactions || [], renderRecord, "interaction");
   if (state.activeView === "signals") return renderCollection("Intel", state.workspace?.signals || [], renderSignalRecord, "signal");
@@ -294,6 +296,7 @@ function openModal(kind, scoped = false) {
   const peopleOptions = state.people.map((person) => `<option value="${person.person_id}">${escapeHtml(person.name)}</option>`).join("");
   const selectedOption = selected?.person_id || "";
   const forms = {
+    tag: {title:"New tag",endpoint:"/api/tags",method:"POST",fields:[field("name","Tag name","text",true)]},
     person: {
       title: "New Person",
       endpoint: "/api/people",
@@ -309,7 +312,7 @@ function openModal(kind, scoped = false) {
         field("relationship_strength", "Relationship Strength"),
         field("email", "Email"),
         field("phone", "Phone"),
-        field("tags", "Tags"),
+        tagPicker([]),
         field("dossier", "Dossier", "textarea"),
         field("current_goals", "Current Goals", "textarea"),
         field("potential_value", "Potential Value", "textarea"),
@@ -329,7 +332,7 @@ function openModal(kind, scoped = false) {
         field("relationship_status", "Relationship Status", "text", false, selected?.relationship_status),
         field("relationship_strength", "Relationship Strength", "text", false, selected?.relationship_strength),
         field("alias", "Alias", "text", false, selected?.alias),
-        field("tags", "Tags", "text", false, (selected?.tags || []).join(", ")),
+        tagPicker(selected?.tags || []),
         field("next_action", "Next Action", "text", false, selected?.next_action),
         field("follow_up_date", "Follow-Up Date", "text", false, selected?.follow_up_date),
       ],
@@ -351,7 +354,7 @@ function openModal(kind, scoped = false) {
       fields: [
         select("person_id", "Person", state.people.map((person) => [person.person_id, person.name]), selectedOption),
         field("interaction_date", "Date", "text", false, new Date().toISOString().slice(0, 10)),
-        field("interaction_type", "Type", "text", false, "meeting"),
+        typePicker("interaction", "interaction_type", "Type", "Meeting"),
         field("summary", "Summary", "textarea"),
         field("takeaways", "Takeaways", "textarea"),
         field("action_items", "Action Items", "textarea"),
@@ -389,7 +392,7 @@ function openModal(kind, scoped = false) {
       fields: [
         select("source_person_id", "Source Person", state.people.map((person) => [person.person_id, person.name]), selectedOption),
         select("target_person_id", "Target Person", state.people.map((person) => [person.person_id, person.name]), ""),
-        field("relationship_type", "Relationship Type", "text", true),
+        typePicker("relationship", "relationship_type", "Relationship Type"),
         field("description", "Description", "textarea"),
       ],
     },
@@ -480,6 +483,8 @@ modalForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (saving) return;
   const payload = Object.fromEntries(new FormData(modalForm).entries());
+  if (modalForm.querySelector('[name="tag_choice"]') || ["person", "edit"].includes(modalForm.dataset.kind)) payload.tags = new FormData(modalForm).getAll("tag_choice");
+  delete payload.tag_choice;
   if (modalForm.dataset.photoData) payload.data = modalForm.dataset.photoData;
   if (payload.person_id) { payload.people = [payload.person_id]; delete payload.person_id; }
   const endpoint = modalForm.dataset.endpoint.replace("__subject__", encodeURIComponent(payload.subject_id || ""));
@@ -496,9 +501,9 @@ modalForm.addEventListener("submit", async (event) => {
       state.directorySearch = "";
       state.dossierTab = "dossier";
     }
-    closeModal();
     feedback("Saved successfully.");
     try { await load(); } catch (error) { feedback(`Saved, but refresh failed: ${error.message}. Reload to view the saved record.`, true); }
+    closeModal();
   } catch (error) {
     const box = document.querySelector("#form-error");
     box.textContent = error.message;
@@ -513,6 +518,22 @@ document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button || button.disabled) return;
   try {
+    if (button.id === "create-inline-tag") {
+      const name = modalForm.querySelector("#new-tag-name").value;
+      const tag = await api("/api/tags", {method:"POST",body:JSON.stringify({name})});
+      state.catalog = await api("/api/catalog");
+      const chosen = new FormData(modalForm).getAll("tag_choice"); chosen.push(tag.name);
+      modalForm.querySelector("#tag-picker").outerHTML = tagPicker(chosen); return;
+    }
+    if (button.dataset.createType) {
+      const kind = button.dataset.createType;
+      const label = modalForm.querySelector("#custom-" + kind).value;
+      const type = await api("/api/types/" + kind, {method:"POST",body:JSON.stringify({label})});
+      state.catalog = await api("/api/catalog");
+      const selectElement = modalForm.querySelector('[name="' + kind + '_type"]');
+      selectElement.innerHTML = state.catalog[kind].map(t=>`<option value="${escapeHtml(t.label)}">${escapeHtml(t.label)}</option>`).join("");
+      selectElement.value = type.label; return;
+    }
     if (button.dataset.sectionAction) { await openSection(button.dataset.sectionAction, button.dataset.section); return; }
     if (button.dataset.context) {
       const key = button.dataset.context;
@@ -597,4 +618,17 @@ modalForm.addEventListener("change", event=>{
   const reader = new FileReader();
   reader.onload = () => { modalForm.dataset.photoData = String(reader.result).split(",")[1]; const preview = document.querySelector("#photo-preview"); preview.src = reader.result; preview.hidden = false; };
   reader.readAsDataURL(file);
+});
+function typePicker(kind, name, label, value = "") {
+  return select(name,label,(state.catalog?.[kind] || []).map(t=>t.label), value) + `<div class="field"><label for="custom-${kind}">Custom ${label.toLowerCase()}</label><div class="inline-create"><input id="custom-${kind}" placeholder="New reusable type"><button class="action-link" type="button" data-create-type="${kind}">Create type</button></div></div>`;
+}
+function tagPicker(chosen) {
+  const selected = new Set(chosen.map(t=>t.toLowerCase()));
+  return `<fieldset class="field full" id="tag-picker"><legend>Tags</legend><label for="tag-search">Search tags</label><input id="tag-search" type="search"><div class="choice-list">${(state.catalog?.tags || []).map(t=>`<label class="tag-choice"><input name="tag_choice" type="checkbox" value="${escapeHtml(t.name)}" ${selected.has(t.name.toLowerCase()) ? "checked" : ""}> ${escapeHtml(t.name)}</label>`).join("")}</div><label for="new-tag-name">New tag name</label><div class="inline-create"><input id="new-tag-name"><button type="button" class="action-link" id="create-inline-tag">Create tag</button></div></fieldset>`;
+}
+function renderTags() {
+  content.innerHTML = `<div class="page-heading"><h1>Tags</h1><button class="primary-button" data-action="tag">+ New Tag</button></div><section class="panel">${(state.catalog?.tags || []).map(t=>`<div class="record-row"><div><span class="tag-chip">${escapeHtml(t.name)}</span><p class="muted">${t.usage} people</p></div></div>`).join("") || '<p>No tags yet.</p>'}</section>`;
+}
+modalForm.addEventListener("input", event=>{
+  if (event.target.id === "tag-search") for (const label of modalForm.querySelectorAll(".tag-choice")) label.hidden = !label.textContent.toLowerCase().includes(event.target.value.toLowerCase());
 });

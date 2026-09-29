@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 MIGRATIONS: list[tuple[int, str]] = [
@@ -382,6 +382,18 @@ CREATE TABLE dossier_revisions (
 """))
 
 
+MIGRATIONS.append((7, """
+CREATE TABLE vocabulary (
+    type_id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    label TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(kind, normalized_name)
+);
+"""))
+
+
 def current_version(connection: sqlite3.Connection) -> int:
     connection.execute(
         "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
@@ -395,9 +407,12 @@ def migrate(connection: sqlite3.Connection) -> None:
     for version, script in MIGRATIONS:
         if version > applied:
             try:
-                connection.executescript(
-                    f"BEGIN IMMEDIATE;\n{script}\nINSERT INTO schema_version(version) VALUES ({int(version)});\nCOMMIT;"
-                )
+                connection.executescript(f"BEGIN IMMEDIATE;\n{script}")
+                if version == 7:
+                    from netops.storage.catalog import backfill_catalog
+                    backfill_catalog(connection)
+                connection.execute('INSERT INTO schema_version(version) VALUES (?)', (version,))
+                connection.commit()
             except Exception:
                 connection.rollback()
                 raise
