@@ -29,8 +29,7 @@ take a consistent SQLite backup, and preserve the adjacent `assets` directory. K
 and its matching database backup together. To roll back, restore that pair into a separate folder;
 do not use an older executable to edit an upgraded database.
 
-This iteration's development and release checks use fictional databases. The working flash-drive
-installation is not upgraded by building or testing the candidate. Section revisions retain original
+This iteration's development and release checks use fictional databases. Building or testing a release does not upgrade any personal installation. Section revisions retain original
 text; Intel retains original IDs and unknown provenance; relationship episodes retain earlier dates;
 completion history survives reopening an action. Previous photo files are retained when replaced or
 removed from a profile, so backups should include the entire asset directory.

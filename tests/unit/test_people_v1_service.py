@@ -6,18 +6,18 @@ from netops.services.people import PeopleService
 
 def test_people_service_scaffold_accepts_v1_repository(v1_repository):
     service = PeopleService(v1_repository)
-    person = v1_repository.add_v1_person(V1Person(name="Henry Valentine", relationship_strength="high"))
+    person = v1_repository.add_v1_person(V1Person(name="Harper Vale", relationship_strength="high"))
 
     resolved = service.resolve_person(person.person_id)
 
-    assert resolved.display_name == "Henry Valentine"
+    assert resolved.display_name == "Harper Vale"
 
 
 def test_people_service_creates_and_reopens_complete_v1_record(v1_repository):
     service = PeopleService(v1_repository)
 
     created = service.create_v1_person(
-        name="Henry Valentine",
+        name="Harper Vale",
         alias="Henry",
         role="Senior Manager, Cybersecurity",
         organization="T-Mobile",
@@ -43,11 +43,11 @@ def test_people_service_creates_and_reopens_complete_v1_record(v1_repository):
 
     reopened = service.get_v1_person(created.person_id)
 
-    assert reopened.name == "Henry Valentine"
+    assert reopened.name == "Harper Vale"
     assert reopened.relationship_strength == "Medium-High"
     assert reopened.dossier == "Cybersecurity leader.\nOffered mock interview support."
     assert reopened.next_action == "Schedule mock interview."
-    assert service.resolve_person("Henry Valentine").tags == ["cybersecurity", "mentor"]
+    assert service.resolve_person("Harper Vale").tags == ["cybersecurity", "mentor"]
 
 
 def test_people_service_updates_v1_field_and_keeps_name_resolvable(v1_repository):

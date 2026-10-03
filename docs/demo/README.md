@@ -7,9 +7,10 @@ workflow against the same GUI assets and backend; it is not a recording of the n
 [Watch the recorded workflow](workflow.webm). The separate native capture below is from the
 rebuilt Windows executable with an isolated fictional database.
 
-These captures show the case-file iteration built from `94470158`. To inspect it locally, open
-`artifacts/NetOps Casefile Preview/Open NetOps Preview.cmd`. The preview contains fictional data
-and explicitly selects its separate database. The distributable ZIP contains no database.
+These captures show the case-file GUI built from `94470158`; the publication build retains the same
+application code and adds release launchers/demo packaging. Download the `-demo.zip` from
+[Releases](https://github.com/wanlemvo/netops/releases/latest), extract it and open `netops/Open NetOps.cmd`.
+It explicitly selects its fictional database. The separate non-demo ZIP starts empty.
 
 ![Native Windows application](native-window.png)
 

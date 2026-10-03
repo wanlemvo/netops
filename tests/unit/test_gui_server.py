@@ -33,7 +33,7 @@ def backend_factory(db_path):
 
 def test_gui_server_serves_static_shell_and_api(v1_repository, isolated_db):
     backend = NetworkOpsBackend(v1_repository)
-    person = backend.create_person({"name": "Henry Valentine", "organization": "T-Mobile"})
+    person = backend.create_person({"name": "Harper Vale", "organization": "T-Mobile"})
     server = NetOpsGuiServer(backend_factory=backend_factory(isolated_db), port=0)
     server.start_background()
     try:
@@ -43,8 +43,8 @@ def test_gui_server_serves_static_shell_and_api(v1_repository, isolated_db):
         dossier = get_json(f"{server.url}api/people/{person['person_id']}/dossier")
 
         assert "NETOPS" in html
-        assert people[0]["name"] == "Henry Valentine"
-        assert dossier["header"]["title"] == "Henry Valentine"
+        assert people[0]["name"] == "Harper Vale"
+        assert dossier["header"]["title"] == "Harper Vale"
     finally:
         server.stop()
 

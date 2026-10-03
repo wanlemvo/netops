@@ -13,7 +13,7 @@ from netops.domain.models import (
 
 def test_v1_long_form_text_round_trips_across_relationship_entities(v1_repository):
     long_text = ("Line one with context.\n" + "A" * 2000 + "\nFinal line.") * 2
-    person = v1_repository.add_v1_person(V1Person(name="Henry Valentine", dossier=long_text, origin_story=long_text))
+    person = v1_repository.add_v1_person(V1Person(name="Harper Vale", dossier=long_text, origin_story=long_text))
 
     draft_interaction = V1Interaction(summary=long_text, takeaways=long_text, action_items=long_text)
     interaction = v1_repository.add_v1_interaction(

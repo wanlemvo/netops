@@ -8,7 +8,7 @@ Proposed
 
 Information should not exist in silos. Notes, signals, opportunities, and interactions may relate to multiple people or records.
 
-For example, one meeting note may reference both Dr. Olav and Benjamin Chan. A single opportunity may involve one person as the owner, another as an introducer, and a note as supporting context. If NetworkOps stores these references only as plain text, the system cannot reliably show related context, backlinks, or future graph-style relationships.
+For example, one meeting note may reference both Dr. Olav and Blair Reed. A single opportunity may involve one person as the owner, another as an introducer, and a note as supporting context. If NetworkOps stores these references only as plain text, the system cannot reliably show related context, backlinks, or future graph-style relationships.
 
 ## Decision
 

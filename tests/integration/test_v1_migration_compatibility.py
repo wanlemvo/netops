@@ -8,7 +8,7 @@ def test_v1_migration_preserves_existing_person_and_contact_data(isolated_db):
     repository = NetOpsRepository(connect(isolated_db))
     person = repository.add_person(
         Person(
-            display_name="Henry Valentine",
+            display_name="Harper Vale",
             primary_email="henry@example.com",
             primary_phone="555-0100",
             organization="T-Mobile",
@@ -23,13 +23,13 @@ def test_v1_migration_preserves_existing_person_and_contact_data(isolated_db):
     contacts = repository.list_contact_methods(person.id)
 
     assert saved.person_id == person.id
-    assert saved.name == "Henry Valentine"
+    assert saved.name == "Harper Vale"
     assert {contact.type for contact in contacts} >= {"email", "phone", "linkedin"}
 
 
 def test_v1_migration_maps_existing_interactions_and_relationships(isolated_db):
     repository = NetOpsRepository(connect(isolated_db))
-    henry = repository.add_person(Person(display_name="Henry Valentine"))
+    henry = repository.add_person(Person(display_name="Harper Vale"))
     isaac = repository.add_person(Person(display_name="Isaac"))
     interaction = repository.add_interaction(
         Interaction(person_id=henry.id, interaction_type="meeting", notes="Discussed persistence.")

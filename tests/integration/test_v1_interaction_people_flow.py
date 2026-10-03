@@ -6,8 +6,8 @@ from netops.services import InteractionService, PeopleService
 def test_multi_person_v1_interaction_is_visible_for_each_person(v1_repository):
     people = PeopleService(v1_repository)
     interactions = InteractionService(v1_repository, people)
-    henry = people.create_v1_person(name="Henry Valentine")
-    benjamin = people.create_v1_person(name="Benjamin Chan")
+    henry = people.create_v1_person(name="Harper Vale")
+    benjamin = people.create_v1_person(name="Blair Reed")
 
     created = interactions.log_v1_interaction(
         [henry.person_id, benjamin.person_id],

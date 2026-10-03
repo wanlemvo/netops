@@ -9,7 +9,7 @@ def test_backend_returns_mockup_shaped_dossier(v1_repository):
     backend = NetworkOpsBackend(v1_repository)
     henry = backend.create_person(
         {
-            "name": "Henry Valentine",
+            "name": "Harper Vale",
             "alias": "Henry",
             "role": "Senior Manager, Cybersecurity",
             "organization": "T-Mobile",
@@ -72,7 +72,7 @@ def test_backend_returns_mockup_shaped_dossier(v1_repository):
     dossier = backend.get_dossier(henry["person_id"])
 
     assert dossier["view"] == "dossier"
-    assert dossier["header"]["title"] == "Henry Valentine"
+    assert dossier["header"]["title"] == "Harper Vale"
     assert "Cybersecurity leader." in dossier["current_read"]
     assert dossier["identity_records"]["tags"] == ["cybersecurity", "mentor", "tmobile"]
     assert len(dossier["contact_records"]["methods"]) == 2

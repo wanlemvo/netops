@@ -16,4 +16,4 @@ The chosen Windows dependency pins and source-commit manifest are reproducibilit
 not universal Python packaging requirements. The build procedure is repeatable; byte-identical output is not asserted.
 
 No project license was found or silently selected. License choice and a distribution-notice review remain
-publication decisions. Repository history was preserved, and the work has not been pushed or published.
+owner decisions. Repository history is preserved; see [publication contents](publication.md).

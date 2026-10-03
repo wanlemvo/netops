@@ -1,11 +1,9 @@
 # Roadmap
 
-## Before publication
+## Remaining owner decisions
 
-- Review the local Windows candidate and the verification report.
 - Decide the project license and confirm third-party distribution notices.
-- Review historical documentation/examples for personal context before sharing.
-- Publish only after explicit approval; this reconciliation does not push or release anything.
+- Historical examples remain in preserved public commits; current fixtures and demo records are fictional.
 
 ## Later, after the core workflow
 

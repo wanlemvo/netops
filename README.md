@@ -5,6 +5,15 @@ Built for one operator who wants their records in a portable SQLite database rat
 
 ![NetOps dossier with fictional data](docs/demo/dossier.png)
 
+## Try the Windows demo
+
+Download the **demo ZIP** from [Releases](https://github.com/wanlemvo/netops/releases/latest),
+extract it, and double-click **netops/Open NetOps.cmd**. It includes fictional people and records;
+your edits save inside that extracted folder. Windows 10/11 and Microsoft Edge WebView2 are required.
+Use the separate **non-demo ZIP** for an empty workspace. Keep demo and personal folders separate.
+
+[Watch the workflow recording](docs/demo/workflow.webm) · [Screenshots and reproducible demo](docs/demo/README.md)
+
 ## What works
 
 Open a standalone People directory and read each person's case file in the full content area.
@@ -31,9 +40,9 @@ Demo creation refuses an existing database. Normal startup never seeds personal 
 
 ## Windows portable build
 
-Extract the complete release ZIP, then open `netops/netops-gui/netops-gui.exe`.
+Extract the complete non-demo release ZIP, then open `netops/Open NetOps.cmd`.
 Keep `.netops-portable` and the `data` folder beside the executable folders when moving it.
-The distribution contains no database; first launch creates one. For existing records,
+The non-demo distribution contains no database; first launch creates one. For existing records,
 follow [backup and upgrade instructions](docs/data-and-backups.md).
 
 Build from a clean committed checkout using Python 3.12:
@@ -45,6 +54,7 @@ Build from a clean committed checkout using Python 3.12:
 ```
 
 Output is under `dist/netops-0.2.0-<commit>/`, with a ZIP, SHA-256 file and embedded build manifest.
+A separate `-demo.zip` is seeded exclusively from the committed fictional fixture, never a live database.
 Each manifest identifies the clean source commit and installed dependency versions. Repeat the build
 in a fresh checkout or move the prior generated output aside; the builder refuses to overwrite it.
 Dependency pinning makes the build procedure repeatable; bit-for-bit identical binaries are not claimed.
@@ -75,7 +85,7 @@ No automatic synchronization, database merging, or encryption is provided.
 Network Map is a disabled future destination; Analytics is absent. Tags, photo management, Intel
 and relationship history work in the GUI. This is a local single-user application, not a
 hosted service. Do not expose its HTTP server on a network. No AI capability or production-readiness
-claim is made. No project license has been selected; resolve licensing before public distribution.
+claim is made. No project license has been selected; this repository does not grant an open-source license.
 
 [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) ·
 [Feature evidence](docs/feature-inventory.md) · [Reconciliation provenance](docs/provenance.md) ·
@@ -84,3 +94,6 @@ claim is made. No project license has been selected; resolve licensing before pu
 [Repository and packaging decisions](docs/repository-guidance.md)
 
 [Current case-file iteration and verification](docs/casefile-iteration.md)
+
+[Project overview](docs/project-overview.md) · [Documentation guide](docs/README.md) ·
+[Publication contents and archives](docs/publication.md)

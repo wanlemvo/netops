@@ -6,7 +6,7 @@ from netops.services import InteractionService, PeopleService
 def test_signal_can_reference_source_interaction(v1_repository):
     people = PeopleService(v1_repository)
     interactions = InteractionService(v1_repository, people)
-    henry = people.create_v1_person(name="Henry Valentine")
+    henry = people.create_v1_person(name="Harper Vale")
     interaction = interactions.log_v1_interaction(
         [henry.person_id],
         interaction_date="2026-06-10",

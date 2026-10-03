@@ -1,4 +1,4 @@
-# NetOps 0.2.0 — desktop reconciliation candidate
+# NetOps 0.2.0 — desktop case-file release
 
 ## Current case-file iteration
 
@@ -23,6 +23,7 @@
 - Correct operator identity and replace unsupported capability claims.
 - Package assets, provide a clean data-free Windows build, and record source/dependency provenance.
 
-This is a local review candidate, not a published release. Requires Windows 10/11 with Edge WebView2.
-No project license has been selected; licensing remains a decision before public distribution.
+The Windows release includes empty and fictional-demo portable archives, launchers and checksums.
+Requires Windows 10/11 with Edge WebView2.
+No project license has been selected; licensing remains an owner decision.
 Network Map remains disabled; Analytics is absent. No cloud sync or database encryption is provided.

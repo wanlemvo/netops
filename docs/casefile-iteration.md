@@ -1,8 +1,8 @@
 # Current case-file iteration — 28 September 2026
 
-The canonical source remains `codex/reconcile-desktop`. This iteration changes the GUI and shared
-domain layer in place. The installed flash-drive executable and personal database have not been
-replaced or upgraded during this work. A new release candidate must be identified by its build manifest.
+The canonical product is the desktop GUI on `main`. This iteration changes the GUI and shared domain
+layer in place. Each release is identified by its build manifest. The public demo uses fictional data;
+personal-data upgrades remain separate operations with private backups.
 
 ## Implemented phases
 
@@ -62,5 +62,5 @@ fictional databases, including old-schema fixtures and consistent SQLite backup/
 or builds use the personal database. Browser workflows and native Windows launch checks are reported
 separately. Review the candidate in a separate folder before any personal-data upgrade.
 
-No push, merge, publication, shared-history rewrite or flash-drive replacement is part of this pass.
-Licensing and publication remain user decisions.
+See [publication contents](publication.md) for the public release and retained archive history.
+No project license has been selected.

@@ -6,8 +6,8 @@ from netops.cli import app
 
 
 def test_cli_multi_person_opportunity_and_relationship_link_flow(runner):
-    runner.invoke(app, ["people", "add", "--name", "Henry Valentine"])
-    runner.invoke(app, ["people", "add", "--name", "Benjamin Chan"])
+    runner.invoke(app, ["people", "add", "--name", "Harper Vale"])
+    runner.invoke(app, ["people", "add", "--name", "Blair Reed"])
 
     opportunity = runner.invoke(
         app,
@@ -15,9 +15,9 @@ def test_cli_multi_person_opportunity_and_relationship_link_flow(runner):
             "opportunity",
             "add",
             "--person",
-            "Henry Valentine",
+            "Harper Vale",
             "--person",
-            "Benjamin Chan",
+            "Blair Reed",
             "--title",
             "Mock Interview",
             "--description",
@@ -28,14 +28,14 @@ def test_cli_multi_person_opportunity_and_relationship_link_flow(runner):
     )
     assert opportunity.exit_code == 0, opportunity.output
 
-    henry_opps = runner.invoke(app, ["opportunity", "list", "Henry Valentine", "--json"])
-    benjamin_opps = runner.invoke(app, ["opportunity", "list", "Benjamin Chan", "--json"])
+    henry_opps = runner.invoke(app, ["opportunity", "list", "Harper Vale", "--json"])
+    benjamin_opps = runner.invoke(app, ["opportunity", "list", "Blair Reed", "--json"])
     assert json.loads(henry_opps.output)[0]["title"] == "Mock Interview"
     assert json.loads(benjamin_opps.output)[0]["title"] == "Mock Interview"
 
     link = runner.invoke(
         app,
-        ["relationship", "link", "Henry Valentine", "Benjamin Chan", "--type", "works_with", "--description", "T-Mobile network."],
+        ["relationship", "link", "Harper Vale", "Blair Reed", "--type", "works_with", "--description", "T-Mobile network."],
     )
     assert link.exit_code == 0, link.output
     assert "Saved relationship link" in link.output

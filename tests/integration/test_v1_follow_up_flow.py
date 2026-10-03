@@ -12,7 +12,7 @@ def test_cli_review_v1_lists_person_and_opportunity_follow_ups(runner):
             "people",
             "add",
             "--name",
-            "Henry Valentine",
+            "Harper Vale",
             "--next-action",
             "Schedule mock interview.",
             "--follow-up-date",
@@ -25,7 +25,7 @@ def test_cli_review_v1_lists_person_and_opportunity_follow_ups(runner):
             "opportunity",
             "add",
             "--person",
-            "Henry Valentine",
+            "Harper Vale",
             "--title",
             "Portfolio Review",
             "--follow-up-date",
@@ -43,8 +43,8 @@ def test_cli_review_v1_lists_person_and_opportunity_follow_ups(runner):
 
 
 def test_v1_opportunities_do_not_generate_rule_based_suggestions(runner):
-    runner.invoke(app, ["people", "add", "--name", "Henry Valentine"])
-    runner.invoke(app, ["opportunity", "add", "--person", "Henry Valentine", "--title", "Mock Interview"])
+    runner.invoke(app, ["people", "add", "--name", "Harper Vale"])
+    runner.invoke(app, ["opportunity", "add", "--person", "Harper Vale", "--title", "Mock Interview"])
 
     result = runner.invoke(app, ["suggest", "--json"])
     assert result.exit_code == 0, result.output

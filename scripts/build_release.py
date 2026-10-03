@@ -4,9 +4,49 @@ import hashlib
 import importlib.metadata
 import json
 import platform
+import shutil
 import subprocess
 import sys
 import zipfile
+
+
+def archive_folder(output):
+    archive = output.parent / (output.name + '.zip')
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
+        for p in output.rglob('*'):
+            if p.is_file():
+                z.write(p, p.relative_to(output))
+    archive.with_suffix('.sha256').write_text(
+        hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name + '\n', encoding='utf-8')
+    return archive
+
+
+def build_demo(output):
+    """Seed only controlled fictional fixtures into a separate copy of a clean build."""
+    from netops.demo import seed_demo
+    portable = output / 'netops'
+    if any(p.suffix.lower() in {'.db', '.sqlite', '.sqlite3'} for p in portable.rglob('*')):
+        raise RuntimeError('Demo packaging requires a data-free input build.')
+    demo_output = output.with_name(output.name + '-demo')
+    shutil.copytree(portable, demo_output / 'netops')
+    demo = demo_output / 'netops'
+    seed_demo(demo / 'data/netops.sqlite3')
+    (demo / 'Open NetOps.cmd').write_text(
+        '@echo off\nsetlocal\nset "NETOPS_DB=%~dp0data\\netops.sqlite3"\nset "NETOPS_HOME="\n'
+        'start "" "%~dp0netops-gui\\netops-gui.exe"\nendlocal\n', encoding='utf-8')
+    (demo / 'README.txt').write_text(
+        'NetOps 0.2.0 — FICTIONAL DEMO\nOpen "Open NetOps.cmd". Windows 10/11 and Edge WebView2 are required.\n'
+        'All included people, organizations and records are fictional. Changes save locally in data/netops.sqlite3.\n'
+        'Move this whole netops folder together. The launcher explicitly selects this demo database.\n'
+        'For a fresh workspace, extract the separate non-demo archive into a new folder.\n'
+        'Never copy a demo database over your personal database. Storage is local, unencrypted and does not sync.\n', encoding='utf-8')
+    manifest_path = demo / 'build-manifest.json'
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+    manifest['build']['dataset'] = 'fictional: netops.demo.seed_demo'
+    manifest['sha256'] = {p.relative_to(demo).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                          for p in demo.rglob('*') if p.is_file() and p != manifest_path}
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+    return archive_folder(demo_output)
 
 
 def run(*args):
@@ -42,8 +82,10 @@ def main():
         run(*args)
     (portable / '.netops-portable').write_text('NetOps portable root v1\n', encoding='utf-8')
     (portable / 'data/assets/profile_photos').mkdir(parents=True)
+    (portable / 'Open NetOps.cmd').write_text(
+        '@echo off\nstart "" "%~dp0netops-gui\\netops-gui.exe"\n', encoding='utf-8')
     (portable / 'README.txt').write_text(
-        'NetOps 0.2.0\nOpen netops-gui/netops-gui.exe. Windows 10/11 and Microsoft Edge WebView2 are required.\n'
+        'NetOps 0.2.0\nOpen "Open NetOps.cmd". Windows 10/11 and Microsoft Edge WebView2 are required.\n'
         'Records are stored in data/netops.sqlite3, created on first launch. Move this whole folder together.\n'
         'This release contains no database. To use existing data, close all NetOps windows, back up the entire old data folder,\n'
         'and copy it into a separate extracted release. Never overwrite your only copy.\n'
@@ -65,6 +107,7 @@ def main():
                 z.write(p, p.relative_to(output))
     archive.with_suffix('.sha256').write_text(hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name + '\n', encoding='utf-8')
     print(f'Release: {archive}')
+    print(f'Fictional demo: {build_demo(output)}')
 
 
 if __name__ == '__main__':

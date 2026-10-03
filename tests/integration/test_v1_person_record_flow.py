@@ -12,7 +12,7 @@ def test_cli_v1_person_create_show_edit_reopen_flow(runner):
             "people",
             "add",
             "--name",
-            "Henry Valentine",
+            "Harper Vale",
             "--organization",
             "T-Mobile",
             "--relationship-strength",
@@ -31,7 +31,7 @@ def test_cli_v1_person_create_show_edit_reopen_flow(runner):
     )
     assert add.exit_code == 0, add.output
 
-    shown = runner.invoke(app, ["people", "show", "Henry Valentine", "--json"])
+    shown = runner.invoke(app, ["people", "show", "Harper Vale", "--json"])
     assert shown.exit_code == 0, shown.output
     payload = json.loads(shown.output)
     assert payload["relationship_strength"] == "Medium-High"
@@ -40,11 +40,11 @@ def test_cli_v1_person_create_show_edit_reopen_flow(runner):
 
     edit = runner.invoke(
         app,
-        ["people", "edit", "Henry Valentine", "--field", "next_action", "--value", "Send portfolio."],
+        ["people", "edit", "Harper Vale", "--field", "next_action", "--value", "Send portfolio."],
     )
     assert edit.exit_code == 0, edit.output
 
-    reopened = runner.invoke(app, ["people", "show", "Henry Valentine", "--json"])
+    reopened = runner.invoke(app, ["people", "show", "Harper Vale", "--json"])
     assert reopened.exit_code == 0, reopened.output
     assert json.loads(reopened.output)["next_action"] == "Send portfolio."
 

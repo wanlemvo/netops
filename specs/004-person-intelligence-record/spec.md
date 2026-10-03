@@ -23,7 +23,7 @@ As a NetworkOps user, I want each person record to capture identity, contact met
 
 **Acceptance Scenarios**:
 
-1. **Given** no existing person record for Henry Valentine, **When** the user creates a new person with name, role, organization, contact methods, relationship context, dossier details, strategic context, next action, follow-up date, and tags, **Then** the saved profile displays those values in a coherent person intelligence record.
+1. **Given** no existing person record for Harper Vale, **When** the user creates a new person with name, role, organization, contact methods, relationship context, dossier details, strategic context, next action, follow-up date, and tags, **Then** the saved profile displays those values in a coherent person intelligence record.
 2. **Given** an existing person record, **When** the user edits any V1 field and saves, **Then** the updated value appears when the profile is reopened and no unrelated fields are changed.
 3. **Given** a user only knows the person's name, **When** the user creates the record with all other fields blank, **Then** the system saves the person and clearly treats missing optional fields as unset instead of invalid.
 

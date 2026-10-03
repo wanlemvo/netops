@@ -1,3 +1,5 @@
+> Historical product notes from the CLI prototype. See [current architecture](architecture.md) for implemented behavior.
+
 # Lessons Learned v0
 
 ## Purpose

@@ -49,7 +49,7 @@ def test_v1_relationship_link_rejects_unknown_entity_type(isolated_db):
 
 def test_v1_contact_methods_crud_and_primary_selection(isolated_db):
     repository = NetOpsRepository(connect(isolated_db))
-    person = repository.add_v1_person(V1Person(name="Henry Valentine"))
+    person = repository.add_v1_person(V1Person(name="Harper Vale"))
     email = repository.add_contact_method(
         ContactMethod(person_id=person.person_id, type="email", label="work", value="Henry@Example.COM")
     )

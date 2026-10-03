@@ -2,7 +2,7 @@
 
 The reference is the executable at `netops/netops/netops-gui/netops-gui.exe` inside the supplied ZIP.
 Its SHA-256 is `7e1323746eef8c9f92492cedbbacee5ae6e74a847115316aefa9325414266328`.
-The extracted G: executable has the same hash.
+The extracted reference executable has the same hash.
 
 Inspection of its PyInstaller archive identified Python 3.12. All 26 embedded NetOps modules
 and the launcher match compiled ZIP source after normalizing embedded source filenames.
@@ -12,13 +12,13 @@ build-machine directory or a reproducible clean commit.
 
 The ZIP source branch was `005-desktop-gui-shell`, based on `16d2e27`, with additional
 uncommitted and ignored GUI files. Its `netops/` ignore rule unintentionally ignored
-`src/netops/` additions. The canonical repository remains ReiBands/netops-cli.
+`src/netops/` additions. The canonical repository is now [wanlemvo/netops](https://github.com/wanlemvo/netops).
 Both repositories share `b2a6274`; a preservation commit and a two-parent reconciliation
 merge retain the desktop and imported histories. Original files and Git metadata were
 also captured in private ZIP snapshots before changes.
 
-The user's confirmed launch path is `G:\netops\netops\netops-gui\netops-gui.exe`.
-The embedded path logic selects `G:\netops\netops\data\netops.sqlite3`.
+The user's confirmed launch path is `<portable-root>/netops-gui/netops-gui.exe`.
+The embedded path logic selects `<portable-root>/data/netops.sqlite3`.
 No NETOPS_DB or NETOPS_HOME process/user/machine override was found during inspection.
 The database matches the ZIP copy and passed SQLite integrity checking. This conclusion
 comes from verified code and launch location; the original installation was not launched

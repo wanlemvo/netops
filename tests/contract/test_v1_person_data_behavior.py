@@ -14,7 +14,7 @@ def test_v1_person_accepts_required_name_with_optional_fields_unset():
 
 def test_v1_person_preserves_multiline_profile_intelligence():
     person = V1Person(
-        name="Henry Valentine",
+        name="Harper Vale",
         dossier="Cybersecurity leader.\nStrong advocate for persistence.",
         importance_reason="Provides strategic career guidance.\nInvested personal time.",
     )
