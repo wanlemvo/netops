@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Implementation Plan: Dynamic Person Dossier
 
 **Branch**: `003-dynamic-person-dossier` | **Date**: 2026-05-11 | **Spec**: [spec.md](spec.md)

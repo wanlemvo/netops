@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Feature Specification: Dynamic Person Dossier
 
 **Feature Branch**: `003-dynamic-person-dossier`  

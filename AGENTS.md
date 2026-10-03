@@ -1,5 +1,8 @@
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-specs/003-dynamic-person-dossier/plan.md
-<!-- SPECKIT END -->
+# NetOps project instructions
+
+The desktop GUI is the primary product. Preserve its visual direction and shared Python services.
+Use src/netops/gui, SQLite storage, and pywebview; do not introduce another application framework.
+Run tests with `.venv/Scripts/python -m pytest`. Use isolated fictional databases.
+Never run builds or tests against personal data. Releases must contain no personal database.
+Historical specifications describe earlier CLI/TUI iterations and are not current product direction.
+See README.md and docs/architecture.md for current behavior and commands.

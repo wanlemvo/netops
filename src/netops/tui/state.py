@@ -89,6 +89,7 @@ class PersonFormDraft:
     organization: str = ""
     location: str = ""
     birthday: str = ""
+    profile_photo_path: str = ""
     tags: str = ""
     email: str = ""
     phone: str = ""
@@ -96,12 +97,21 @@ class PersonFormDraft:
     github: str = ""
     other_social: str = ""
     relationship_type: str = ""
+    relationship_status: str = ""
     relationship_strength: str = ""
+    origin_story: str = ""
+    importance_reason: str = ""
+    dossier: str = ""
     notes: str = ""
     interests: str = ""
     communication_style: str = ""
-    preferences_notes: str = ""
-    signals: str = ""
+    preferences: str = ""
+    current_goals: str = ""
+    potential_value: str = ""
+    first_met: str = ""
+    last_contact: str = ""
+    next_action: str = ""
+    follow_up_date: str = ""
     active_field: str = "name"
     validation_message: str = ""
 
@@ -112,6 +122,7 @@ class PersonFormDraft:
         "organization",
         "location",
         "birthday",
+        "profile_photo_path",
         "tags",
         "email",
         "phone",
@@ -119,12 +130,20 @@ class PersonFormDraft:
         "github",
         "other_social",
         "relationship_type",
+        "relationship_status",
         "relationship_strength",
-        "notes",
+        "origin_story",
+        "importance_reason",
+        "dossier",
         "interests",
         "communication_style",
-        "preferences_notes",
-        "signals",
+        "preferences",
+        "current_goals",
+        "potential_value",
+        "first_met",
+        "last_contact",
+        "next_action",
+        "follow_up_date",
     )
 
     def has_values(self) -> bool:
@@ -140,12 +159,6 @@ class PersonFormDraft:
 
     def tags_list(self) -> list[str]:
         return [tag.strip() for tag in self.tags.split(",") if tag.strip()]
-
-    def interests_list(self) -> list[str]:
-        return [interest.strip() for interest in self.interests.split(",") if interest.strip()]
-
-    def signals_list(self) -> list[str]:
-        return [signal.strip() for signal in self.signals.split(",") if signal.strip()]
 
     def append_text(self, text: str) -> None:
         current = getattr(self, self.active_field)
@@ -479,6 +492,13 @@ class TuiState:
     def activate(self) -> NavigationResult:
         item = self.current.selected_item
         if item is None or not item.enabled or item.kind == ItemKind.NOOP:
+            if self.current.name == ScreenName.DOSSIER and item is not None and item.kind == ItemKind.NOOP:
+                person_id = self.current.payload.get("person_id", "")
+                if self.current.selected_index == 2:
+                    return NavigationResult(self.push(self.build_edit_profile_list(person_id)))
+                if self.current.selected_index == 4:
+                    self.raw_note_draft = RawNoteDraft(person_id=person_id)
+                    return NavigationResult(self.push(self.build_raw_note_form()))
             return NavigationResult(self.current, message="noop")
 
         if item.kind == ItemKind.OPEN_SCREEN:
@@ -605,29 +625,51 @@ class TuiState:
         if not self.form_draft.validate():
             self.refresh_current()
             return self.current
-        self.services.people.create_person(
+        if not hasattr(self.services.people, "create_v1_person"):
+            self.services.people.create_person(
+                name=self.form_draft.name.strip(),
+                organization=self.form_draft.organization.strip() or None,
+                tags=self.form_draft.tags_list(),
+                notes=self.form_draft.notes.strip() or self.form_draft.dossier.strip() or None,
+            )
+            self.form_draft = PersonFormDraft()
+            self.current = self.build_people_list()
+            self.stack = [self.build_main_menu()]
+            return self.current
+        person = self.services.people.create_v1_person(
             name=self.form_draft.name.strip(),
             alias=self.form_draft.alias.strip() or None,
             role=self.form_draft.role.strip() or None,
             organization=self.form_draft.organization.strip() or None,
             location=self.form_draft.location.strip() or None,
             birthday=self.form_draft.birthday.strip() or None,
-            email=self.form_draft.email.strip() or None,
-            phone=self.form_draft.phone.strip() or None,
+            profile_photo_path=self.form_draft.profile_photo_path.strip() or None,
             relationship_type=self.form_draft.relationship_type.strip() or None,
+            relationship_status=self.form_draft.relationship_status.strip() or None,
             relationship_strength=self.form_draft.relationship_strength.strip() or None,
+            origin_story=self.form_draft.origin_story.strip() or None,
+            importance_reason=self.form_draft.importance_reason.strip() or None,
+            dossier=self.form_draft.dossier.strip() or self.form_draft.notes.strip() or None,
             tags=self.form_draft.tags_list(),
-            notes=self.form_draft.notes.strip() or None,
-            interests=self.form_draft.interests_list(),
+            interests=self.form_draft.interests.strip() or None,
             communication_style=self.form_draft.communication_style.strip() or None,
-            preferences_notes=self.form_draft.preferences_notes.strip() or None,
-            signals=self.form_draft.signals_list(),
-            contacts=[
-                {"kind": "social", "label": "LinkedIn", "value": self.form_draft.linkedin.strip()},
-                {"kind": "social", "label": "GitHub", "value": self.form_draft.github.strip()},
-                {"kind": "social", "label": "Other", "value": self.form_draft.other_social.strip()},
-            ],
+            preferences=self.form_draft.preferences.strip() or None,
+            current_goals=self.form_draft.current_goals.strip() or None,
+            potential_value=self.form_draft.potential_value.strip() or None,
+            first_met=self.form_draft.first_met.strip() or None,
+            last_contact=self.form_draft.last_contact.strip() or None,
+            next_action=self.form_draft.next_action.strip() or None,
+            follow_up_date=self.form_draft.follow_up_date.strip() or None,
         )
+        for kind, label, value in [
+            ("email", "primary", self.form_draft.email.strip()),
+            ("phone", "primary", self.form_draft.phone.strip()),
+            ("social", "LinkedIn", self.form_draft.linkedin.strip()),
+            ("social", "GitHub", self.form_draft.github.strip()),
+            ("social", "Other", self.form_draft.other_social.strip()),
+        ]:
+            if value:
+                self.services.people.add_contact(person.person_id, kind=kind, label=label, value=value)
         self.form_draft = PersonFormDraft()
         self.current = self.build_people_list()
         self.stack = [self.build_main_menu()]
@@ -712,6 +754,10 @@ class TuiState:
             return self.current
         if action == "delete_contact":
             person_id = self.services.people.delete_contact(item.payload["contact_id"])
+            self.pop()
+            return self.replace_with_dossier(person_id)
+        if action == "delete_contact_method":
+            person_id = self.services.people.delete_contact_method(item.payload["contact_method_id"])
             self.pop()
             return self.replace_with_dossier(person_id)
         if action == "delete_raw_note":

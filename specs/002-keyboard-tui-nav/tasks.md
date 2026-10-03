@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Tasks: Keyboard TUI Navigation
 
 **Input**: Design documents from `specs/002-keyboard-tui-nav/`

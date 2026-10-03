@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Research: Dynamic Person Dossier
 
 ## Decision: Use additive SQLite migrations for dossier fields

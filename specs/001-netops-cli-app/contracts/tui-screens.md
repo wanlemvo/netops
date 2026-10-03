@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../../README.md).
+
 # TUI Screen Contract: NetOps
 
 The TUI launches from `netops tui` and uses the same services and records as direct commands. Every save action must validate input, preserve entered values after errors, and show a confirmation when completed.

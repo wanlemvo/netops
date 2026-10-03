@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Implementation Plan: NetOps CLI App
 
 **Branch**: `001-netops-cli-app` | **Date**: 2026-05-05 | **Spec**: [spec.md](spec.md)

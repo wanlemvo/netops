@@ -9,7 +9,9 @@ __pycache__/
 htmlcov/
 .venv/
 venv/
-data/
+.netops-staging/
+/data/
+/netops/
 dist/
 build/
 portable/
@@ -23,3 +25,13 @@ portable/
 Thumbs.db
 .vscode/
 .idea/
+
+/.reconciliation/
+*.sqlite3
+*.sqlite3-*
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.zip
+/artifacts/

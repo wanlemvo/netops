@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../../README.md).
+
 # Contract: Keyboard Navigation
 
 The terminal interface launched by `netops tui` must be navigable without command typing.

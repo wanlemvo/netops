@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../README.md).
+
 # Research: NetOps CLI App
 
 ## Decision: Python 3.11+ runtime

@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../../README.md).
+
 # Contract: Screen Behavior
 
 ## People List

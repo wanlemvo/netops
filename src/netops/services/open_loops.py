@@ -45,3 +45,6 @@ class OpenLoopService:
 
     def delete(self, loop_id: str) -> None:
         self.repository.delete_open_loop(loop_id)
+
+    def review_v1_follow_ups(self) -> list[dict[str, str]]:
+        return self.repository.list_v1_follow_ups()

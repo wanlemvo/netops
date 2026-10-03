@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>NetworkOps</title><link rel="stylesheet" href="/styles.css" /></head>
+<body>
+<header class="app-topbar"><a class="brand" href="#" aria-label="NetOps home">NETOPS</a><div class="global-search"><label class="sr-only" for="search-input">Global search</label><input id="search-input" type="search" placeholder="Search people, organizations, tags…" autocomplete="off" /><div id="search-results" class="search-results hidden"></div></div><div class="operator-card"><div class="operator-avatar">IW</div><div><strong>Isaac Wanlemvo</strong><span>Operator · Personal workspace</span></div></div></header>
+<div id="app" class="app-shell"><aside class="sidebar" aria-label="Application navigation">
+<button id="nav-toggle" class="nav-toggle" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">☰ <span class="nav-text">Navigation</span></button>
+<div class="new-control"><button id="new-toggle" class="primary-button" aria-expanded="false" aria-controls="new-menu" title="New record">+ <span class="nav-text">New</span></button><div id="new-menu" class="new-menu hidden"><button data-action="person">New Person</button><button data-action="interaction">New Interaction</button><button data-action="signal">New Intel</button><button data-action="relationship">New Relationship</button></div></div>
+<nav class="nav-group">
+<button class="nav-item active" data-view="dashboard" title="Dashboard"><span aria-hidden="true">◫</span><span class="nav-text">Dashboard</span></button>
+<button class="nav-item" data-view="people" title="People"><span aria-hidden="true">◎</span><span class="nav-text">People</span></button>
+<button class="nav-item" data-view="interactions" title="Interactions"><span aria-hidden="true">◷</span><span class="nav-text">Interactions</span></button>
+<button class="nav-item" data-view="signals" title="Intel"><span aria-hidden="true">◇</span><span class="nav-text">Intel</span></button>
+<button class="nav-item" data-view="relationships" title="Relationships"><span aria-hidden="true">⇄</span><span class="nav-text">Relationships</span></button>
+<button class="nav-item" data-view="tags" title="Tags"><span aria-hidden="true">#</span><span class="nav-text">Tags</span></button>
+<button class="nav-item" data-view="map" disabled title="Network Map — later"><span aria-hidden="true">⌘</span><span class="nav-text">Network Map</span></button>
+</nav><div class="storage-label nav-text">Local SQLite<br />No cloud sync</div></aside>
+<main class="main-stage"><div id="feedback" role="status" aria-live="polite"></div><details class="storage-details"><summary>Data location</summary><code id="database-path"></code></details><section id="content" class="content"></section></main></div>
+<div id="modal" class="modal hidden" aria-hidden="true"><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><div><div class="eyebrow">NetworkOps Entry</div><h2 id="modal-title">New Record</h2></div><button id="modal-close" class="icon-button" type="button">Close</button></div><form id="modal-form" class="modal-form"></form></div></div>
+<script src="/app.js"></script></body></html>

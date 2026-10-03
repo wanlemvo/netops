@@ -67,7 +67,7 @@ The current version focuses on:
 * Open-loop tracking
 * Relationship history
 
-The system is implemented as a local-first CLI application backed by SQLite.
+The system is implemented as a local-first desktop GUI backed by SQLite, with pywebview and a shared Python service layer. CLI/TUI commands remain secondary interfaces.
 
 ---
 

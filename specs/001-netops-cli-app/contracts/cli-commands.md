@@ -1,3 +1,5 @@
+> Historical design record; not current product instructions. See the [current README](../../../README.md).
+
 # CLI Command Contract: NetOps
 
 All commands must support human-readable output. Commands that return structured data should also support `--json` where practical. Validation failures must exit non-zero and explain what to fix without discarding user-entered context in interactive prompts.
