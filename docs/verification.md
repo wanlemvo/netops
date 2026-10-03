@@ -7,6 +7,13 @@ browser workflows and the fictional demo packaging regression. Tests use isolate
 The demo packaging check verifies exactly two fictional people, SQLite integrity, manifest hashes,
 its explicit database launcher, and rejection of an input distribution containing a database.
 
+The publication Windows build is from clean commit `35b836c9d10a6ea2fdb2e47f691b4be89a8801eb`.
+On 3 October 2026, its native WebView2 controls rendered successfully and a copied distribution retained
+its fictional record and JPEG photo after moving to a renamed folder containing spaces. Both archive
+manifests/checksums were verified: zero databases in the empty edition, exactly one freshly seeded
+fictional database in the demo. A clean-export wheel/source distribution built successfully; all GUI
+assets matched source exactly. GitHub push and pull-request checks passed for that source commit.
+
 GitHub runs backend, migrations, browser and package-install checks on pushes and pull requests.
 [Live CI results](https://github.com/wanlemvo/netops/actions/workflows/checks.yml) show the exact tested
 commit and result. Native Windows verification is performed separately; Linux CI does not test WebView2.
